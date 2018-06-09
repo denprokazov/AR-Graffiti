@@ -30,9 +30,7 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false"
         tools:ignore="GoogleAppIndexingWarning">
-        <!-- This tag indicates that this application requires ARCore. This results in the
-            application only being visible in the Google Play Store on devices that support
-            ARCore. -->
+
         <meta-data android:name="com.google.ar.core" android:value="required" />
 
         <activity

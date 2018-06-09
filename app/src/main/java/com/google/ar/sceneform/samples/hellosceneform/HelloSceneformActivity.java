@@ -24,6 +24,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -34,41 +35,33 @@ import com.google.ar.core.Plane;
 import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
 import com.google.ar.sceneform.AnchorNode;
-import com.google.ar.sceneform.HitTestResult;
-import com.google.ar.sceneform.Scene;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.Color;
 import com.google.ar.sceneform.rendering.MaterialFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.rendering.ShapeFactory;
-import com.google.ar.sceneform.rendering.ViewRenderable;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.ArPermissionHelper;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.LocationHelper;
-import com.google.ar.sceneform.samples.hellosceneform.services.image_export.AnchorToPointsMapper;
+import com.google.ar.sceneform.samples.hellosceneform.services.image_export.ImageExporter;
+import com.google.ar.sceneform.samples.hellosceneform.services.image_export.PlaneAnchorsToPointsMapper;
+import com.google.ar.sceneform.samples.hellosceneform.services.image_export.Point;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
+import java.io.OutputStream;
 import java.util.Collection;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * This is an example activity that uses the Sceneform UX package to make common AR tasks easier.
- */
 public class HelloSceneformActivity extends AppCompatActivity {
     private static final String TAG = HelloSceneformActivity.class.getSimpleName();
 
     private ArFragment arFragment;
     private ModelRenderable brushRenderable;
-    private ViewRenderable testViewRenderable;
-    private boolean wasTouchedOnce;
 
     private double testLatitude = 53.890447;
     private double testLongitude = 27.5687115;
 
     private double currentLatitude = 53.8903810;
     private double currentLongitude = 27.5685724;
-
-    private AtomicBoolean allowPaint = new AtomicBoolean(false);
 
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
@@ -114,11 +107,12 @@ public class HelloSceneformActivity extends AppCompatActivity {
     private void AddPushButtonHandler() {
         final Button button = findViewById(R.id.post_image);
         button.setOnClickListener(v -> {
-            Collection<Anchor> anchors = arFragment.getArSceneView().getSession().getAllAnchors();
+            Collection<Plane> planes = arFragment.getArSceneView().getSession().getAllTrackables(Plane.class);
 
-            AnchorToPointsMapper.Map(anchors);
-
-
+            for(Plane plane : planes) {
+                Collection<Point> points = PlaneAnchorsToPointsMapper.Map(plane);
+                OutputStream outputStream = ImageExporter.Export(points);
+            }
         });
     }
 
@@ -144,7 +138,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
         };
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1
                     );
@@ -156,7 +149,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
     private void AddArFragmentListeners() {
         arFragment.getArSceneView().getScene().setOnTouchListener((hitTestResult, motionEvent) -> {
-            if (brushRenderable == null || !allowPaint.get()) {
+            if (brushRenderable == null) {
                 return true;
             }
 
@@ -173,13 +166,15 @@ public class HelloSceneformActivity extends AppCompatActivity {
                     continue;
                 }
 
+                Log.d(TAG, String.valueOf(plane.hashCode()));
+
                 Anchor anchor = hitResult.createAnchor();
                 AnchorNode anchorNode = new AnchorNode(anchor);
                 anchorNode.setParent(arFragment.getArSceneView().getScene());
 
                 TransformableNode locationView = new TransformableNode(arFragment.getTransformationSystem());
                 locationView.setParent(anchorNode);
-                locationView.setRenderable(testViewRenderable);
+                locationView.setRenderable(brushRenderable);
                 locationView.select();
             }
 

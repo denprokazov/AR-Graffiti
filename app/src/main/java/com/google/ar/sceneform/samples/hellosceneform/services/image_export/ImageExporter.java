@@ -9,7 +9,7 @@ import java.io.OutputStream;
 import java.util.Collection;
 
 public class ImageExporter {
-    public static int PIXEL_PER_METER = 100;
+    public static int PIXEL_PER_METER = 250;
 
     public static OutputStream Export(Collection<Point> points) {
         float minX = 0;
