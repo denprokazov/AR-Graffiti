@@ -166,10 +166,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
             return true;
         });
-
-        arFragment.getArSceneView().getScene().setOnUpdateListener(frameTime -> {
-            arFragment.getArSceneView().getArFrame().getCamera().getPose().
-        });
     }
 
     private void CreateBrushRenderable() {
