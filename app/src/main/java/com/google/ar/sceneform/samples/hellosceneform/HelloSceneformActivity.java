@@ -16,6 +16,7 @@
 package com.google.ar.sceneform.samples.hellosceneform;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -27,6 +28,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.ar.core.Anchor;
 import com.google.ar.core.Frame;
@@ -63,13 +65,16 @@ public class HelloSceneformActivity extends AppCompatActivity {
     private double currentLatitude = 53.8903810;
     private double currentLongitude = 27.5685724;
 
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
     // CompletableFuture requires api level 24
     // FutureReturnValueIgnored is not valid
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_ux);
+        setContentView(R.layout.activity_sceneform);
 
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
 
@@ -80,9 +85,10 @@ public class HelloSceneformActivity extends AppCompatActivity {
         AddLocationButtonHandler();
         AddPushButtonHandler();
         AddArFragmentListeners();
-
+        SetupLocationListener();
     }
 
+    @SuppressLint("MissingPermission")
     private void AddLocationButtonHandler() {
         final Button button = findViewById(R.id.location);
         button.setOnClickListener(v -> {
@@ -101,6 +107,11 @@ public class HelloSceneformActivity extends AppCompatActivity {
             brush.setParent(anchorNode);
             brush.setRenderable(brushRenderable);
             brush.select();
+
+            Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+            Log.d("TAG", String.valueOf(location.getLatitude()));
+            Log.d("TAG", String.valueOf(location.getLongitude()));
         });
     }
 
@@ -116,31 +127,35 @@ public class HelloSceneformActivity extends AppCompatActivity {
         });
     }
 
-    private void SetupLocationListener(TextView locationTextView) {
+    private void SetupLocationListener() {
         ArPermissionHelper.requestPermission(this);
 
-        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        LocationListener locationListener = new LocationListener() {
+        final Context context = this;
+
+        locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
-                // Called when a new location is found by the network location provider.
-                locationTextView.setText(location.toString());
+                Toast.makeText(context, "onLocationChanged", Toast.LENGTH_SHORT);
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
+                Toast.makeText(context, "onStatusChanged", Toast.LENGTH_SHORT);
             }
 
             public void onProviderEnabled(String provider) {
+                Toast.makeText(context, "onProviderEnabled", Toast.LENGTH_SHORT);
             }
 
             public void onProviderDisabled(String provider) {
+                Toast.makeText(context, "onProviderDisabled", Toast.LENGTH_SHORT);
             }
         };
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1
-                    );
+            );
             return;
         }
 
@@ -187,7 +202,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
                 .thenAccept(
                         material -> {
                             brushRenderable =
-                                    ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material);
+                                    ShapeFactory.makeSphere(0.025f, new Vector3(0.0f, 0.15f, 0.0f), material);
                         });
     }
 }

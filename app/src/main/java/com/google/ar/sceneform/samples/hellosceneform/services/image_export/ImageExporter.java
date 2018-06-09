@@ -46,11 +46,13 @@ public class ImageExporter {
             }
         }
 
-        Bitmap bitmap = Bitmap.createBitmap(
-                (int)(maxX + maxXSize / 2 - minX - minXSize / 2) * PIXEL_PER_METER,
-                (int)(maxY + maxYSize / 2 - minY - minYSize / 2) * PIXEL_PER_METER,
-                Bitmap.Config.ARGB_8888
-        );
+        int width = (int)(maxX + maxXSize / 2 - minX - minXSize / 2) * PIXEL_PER_METER;
+        int height = (int)(maxY + maxYSize / 2 - minY - minYSize / 2) * PIXEL_PER_METER;
+
+        width = width > 0 ? width : 1;
+        height = height > 0 ? height : 1;
+
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 
         Canvas canvas = new Canvas(bitmap);
 
