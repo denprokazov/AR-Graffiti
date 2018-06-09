@@ -6,12 +6,12 @@ import android.graphics.Paint;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
-import java.util.List;
+import java.util.Collection;
 
 public class ImageExporter {
     public static int PIXEL_PER_METER = 100;
 
-    public static OutputStream Export(List<Point> points) {
+    public static OutputStream Export(Collection<Point> points) {
         float minX = 0;
         float minXSize = 0;
 
