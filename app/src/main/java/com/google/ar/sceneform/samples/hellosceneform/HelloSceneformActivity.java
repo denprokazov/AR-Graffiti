@@ -15,169 +15,193 @@
  */
 package com.google.ar.sceneform.samples.hellosceneform;
 
-import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
+import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
-import android.widget.Button;
-import android.widget.TextView;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.Toast;
 
-import com.google.ar.core.Anchor;
-import com.google.ar.core.Frame;
-import com.google.ar.core.HitResult;
-import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
-import com.google.ar.sceneform.AnchorNode;
-import com.google.ar.sceneform.math.Vector3;
-import com.google.ar.sceneform.rendering.Color;
-import com.google.ar.sceneform.rendering.MaterialFactory;
+import com.google.ar.core.exceptions.CameraNotAvailableException;
+import com.google.ar.core.exceptions.UnavailableException;
+import com.google.ar.sceneform.ArSceneView;
+import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.rendering.ModelRenderable;
-import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.rendering.ViewRenderable;
-import com.google.ar.sceneform.samples.hellosceneform.helpers.ArPermissionHelper;
-import com.google.ar.sceneform.samples.hellosceneform.helpers.LocationHelper;
-import com.google.ar.sceneform.ux.ArFragment;
-import com.google.ar.sceneform.ux.TransformableNode;
+
+import uk.co.appoly.arcorelocation.LocationScene;
+import uk.co.appoly.arcorelocation.utils.ARLocationPermissionHelper;
 
 /**
  * This is an example activity that uses the Sceneform UX package to make common AR tasks easier.
  */
 public class HelloSceneformActivity extends AppCompatActivity {
-    private static final String TAG = HelloSceneformActivity.class.getSimpleName();
+    private boolean installRequested;
+    private boolean hasFinishedLoading = false;
 
-    private ArFragment arFragment;
+    private Snackbar loadingMessageSnackbar = null;
+
+    private ArSceneView arSceneView;
+
+    // Renderables for this example
+    private ModelRenderable andyRenderable;
+    private ViewRenderable exampleLayoutRenderable;
+
+    // Our ARCore-Location scene
+    private LocationScene locationScene;
+
     private ModelRenderable brushRenderable;
-    private ViewRenderable testViewRenderable;
-    private boolean wasTouchedOnce;
-
-    private double testLatitude = 53.890447;
-    private double testLongitude = 27.5687115;
-
-    private double currentLatitude = 53.8903810;
-    private double currentLongitude = 27.5685724;
 
 
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
     // CompletableFuture requires api level 24
-    // FutureReturnValueIgnored is not valid
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_ux);
-
-        final Button button = findViewById(R.id.location);
-        button.setOnClickListener(v -> {
-            double distance = LocationHelper.distance(testLatitude, currentLatitude, testLongitude, currentLongitude, 0.0,0.0);
-            double bearing = LocationHelper.bearing(testLatitude, currentLatitude, testLongitude, currentLongitude);
-
-            Pose pose = arFragment.getArSceneView().getArFrame().getCamera().getPose();
-            pose.compose(Pose.makeTranslation(0, 0.5f, 0));
-
-            Session session = arFragment.getArSceneView().getSession();
-
-            AnchorNode anchorNode = new AnchorNode(session.createAnchor(pose));
-            anchorNode.setParent(arFragment.getArSceneView().getScene());
-            
-            TransformableNode brush = new TransformableNode(arFragment.getTransformationSystem());
-            brush.setParent(anchorNode);
-            brush.setRenderable(brushRenderable);
-            brush.select();
-
-        });
-
-        arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
-
-        // When you build a Renderable, Sceneform loads its resources in the background while returning
-        // a CompletableFuture. Call thenAccept(), handle(), or check isDone() before calling get().
-        CreateBrushRenderable();
-
-        AddArFragmentListeners();
+        setContentView(R.layout.activity_sceneform);
+        arSceneView = findViewById(R.id.ar_scene_view);
     }
 
-    private void SetupLocationListener(TextView locationTextView) {
-        ArPermissionHelper.requestPermission(this);
+    /**
+     * Example node of a layout
+     *
+     * @return
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private Node getExampleView() {
+        Node base = new Node();
+        base.setRenderable(exampleLayoutRenderable);
+        Context c = this;
+        // Add  listeners etc here
+        View eView = exampleLayoutRenderable.getView();
+        eView.setOnTouchListener((v, event) -> {
+            Toast.makeText(
+                    c, "Location marker touched.", Toast.LENGTH_LONG)
+                    .show();
+            return false;
+        });
 
-        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        return base;
+    }
 
-        LocationListener locationListener = new LocationListener() {
-            public void onLocationChanged(Location location) {
-                // Called when a new location is found by the network location provider.
-                locationTextView.setText(location.toString());
+    /**
+     * Make sure we call locationScene.resume();
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (locationScene != null) {
+            locationScene.resume();
+        }
+
+        if (arSceneView.getSession() == null) {
+            // If the session wasn't created yet, don't resume rendering.
+            // This can happen if ARCore needs to be updated or permissions are not granted yet.
+            try {
+                Session session = DemoUtils.createArSession(this, installRequested);
+                if (session == null) {
+                    installRequested = ARLocationPermissionHelper.hasPermission(this);
+                    return;
+                } else {
+                    arSceneView.setupSession(session);
+                }
+            } catch (UnavailableException e) {
+                DemoUtils.handleSessionException(this, e);
             }
+        }
 
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-            }
-
-            public void onProviderEnabled(String provider) {
-            }
-
-            public void onProviderDisabled(String provider) {
-            }
-        };
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1
-                    );
+        try {
+            arSceneView.resume();
+        } catch (CameraNotAvailableException ex) {
+            DemoUtils.displayError(this, "Unable to get camera", ex);
+            finish();
             return;
         }
 
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        if (arSceneView.getSession() != null) {
+            showLoadingMessage();
+        }
     }
 
-    private void AddArFragmentListeners() {
-        arFragment.getArSceneView().getScene().setOnTouchListener((hitTestResult, motionEvent) -> {
-            if (brushRenderable != null) {
-                Frame frame = arFragment.getArSceneView().getArFrame();
-                for (HitResult hitResult : frame.hitTest(motionEvent)) {
-                    if(!wasTouchedOnce) {
-                        Anchor anchor = hitResult.createAnchor();
-                        AnchorNode anchorNode = new AnchorNode(anchor);
-                        anchorNode.setParent(arFragment.getArSceneView().getScene());
+    /**
+     * Make sure we call locationScene.pause();
+     */
+    @Override
+    public void onPause() {
+        super.onPause();
 
-                        // Create the transformable brush and add it to the anchor.
-                        TransformableNode locationView = new TransformableNode(arFragment.getTransformationSystem());
-                        locationView.setParent(anchorNode);
-                        locationView.setRenderable(testViewRenderable);
-                        locationView.select();
+        if (locationScene != null) {
+            locationScene.pause();
+        }
 
-                        wasTouchedOnce = true;
-                    } else {
-                        Anchor anchor = hitResult.createAnchor();
-                        AnchorNode anchorNode = new AnchorNode(anchor);
-                        anchorNode.setParent(arFragment.getArSceneView().getScene());
+        arSceneView.pause();
+    }
 
-                        // Create the transformable brush and add it to the anchor.
-                        TransformableNode brush = new TransformableNode(arFragment.getTransformationSystem());
-                        brush.setParent(anchorNode);
-                        brush.setRenderable(brushRenderable);
-                        brush.select();
-                    }
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        arSceneView.destroy();
+    }
 
-                }
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode, @NonNull String[] permissions, @NonNull int[] results) {
+        if (!ARLocationPermissionHelper.hasPermission(this)) {
+            if (!ARLocationPermissionHelper.shouldShowRequestPermissionRationale(this)) {
+                // Permission denied with checking "Do not ask again".
+                ARLocationPermissionHelper.launchPermissionSettings(this);
+            } else {
+                Toast.makeText(
+                        this, "Camera permission is needed to run this application", Toast.LENGTH_LONG)
+                        .show();
             }
-
-            return true;
-        });
-
-        arFragment.getArSceneView().getScene().setOnUpdateListener(frameTime -> {
-            arFragment.getArSceneView().getArFrame().getCamera().getPose().
-        });
+            finish();
+        }
     }
 
-    private void CreateBrushRenderable() {
-        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.RED))
-                .thenAccept(
-                        material -> {
-                            brushRenderable =
-                                    ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material);
-                        });
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            // Standard Android full-screen functionality.
+            getWindow()
+                    .getDecorView()
+                    .setSystemUiVisibility(
+                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+    }
+
+    private void showLoadingMessage() {
+        if (loadingMessageSnackbar != null && loadingMessageSnackbar.isShownOrQueued()) {
+            return;
+        }
+
+        loadingMessageSnackbar =
+                Snackbar.make(
+                        HelloSceneformActivity.this.findViewById(android.R.id.content),
+                        "loading",
+                        Snackbar.LENGTH_INDEFINITE);
+        loadingMessageSnackbar.getView().setBackgroundColor(0xbf323232);
+        loadingMessageSnackbar.show();
+    }
+
+    private void hideLoadingMessage() {
+        if (loadingMessageSnackbar == null) {
+            return;
+        }
+
+        loadingMessageSnackbar.dismiss();
+        loadingMessageSnackbar = null;
     }
 }

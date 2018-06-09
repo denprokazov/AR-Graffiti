@@ -16,4 +16,5 @@
 -->
 <resources>
     <string name="app_name">Hello Sceneform</string>
+    <string name="access_token">pk.eyJ1IjoiY2F1cmVsbGlhbiIsImEiOiJjamFzcGt2MDU0dmF6MnFucWMwcnFyNm45In0.rn9w5j79FxOuRaIgoEefxw</string>
 </resources>
