@@ -26,8 +26,7 @@ public class DemoUtils {
      * Creates and shows a Toast containing an error message. If there was an exception passed in it
      * will be appended to the toast. The error will also be written to the Log
      */
-    public static void displayError(
-            final Context context, final String errorMsg, @Nullable final Throwable problem) {
+    public static void displayError(final Context context, final String errorMsg, @Nullable final Throwable problem) {
         final String tag = context.getClass().getSimpleName();
         final String toastText;
         if (problem != null && problem.getMessage() != null) {
