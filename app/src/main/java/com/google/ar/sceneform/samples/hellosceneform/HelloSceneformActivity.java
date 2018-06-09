@@ -17,15 +17,16 @@ package com.google.ar.sceneform.samples.hellosceneform;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.view.Gravity;
-import android.view.MotionEvent;
-import android.widget.Toast;
+
 import com.google.ar.core.Anchor;
+import com.google.ar.core.Frame;
 import com.google.ar.core.HitResult;
-import com.google.ar.core.Plane;
-import com.google.ar.core.Plane.Type;
 import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.math.Vector3;
+import com.google.ar.sceneform.rendering.Color;
+import com.google.ar.sceneform.rendering.MaterialFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
+import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
@@ -36,7 +37,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
   private static final String TAG = HelloSceneformActivity.class.getSimpleName();
 
   private ArFragment arFragment;
-  private ModelRenderable andyRenderable;
+  private ModelRenderable brushRenderable;
 
   @Override
   @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
@@ -51,39 +52,29 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
     // When you build a Renderable, Sceneform loads its resources in the background while returning
     // a CompletableFuture. Call thenAccept(), handle(), or check isDone() before calling get().
-    ModelRenderable.builder()
-        .setSource(this, R.raw.andy)
-        .build()
-        .thenAccept(renderable -> andyRenderable = renderable)
-        .exceptionally(
-            throwable -> {
-              Toast toast =
-                  Toast.makeText(this, "Unable to load andy renderable", Toast.LENGTH_LONG);
-              toast.setGravity(Gravity.CENTER, 0, 0);
-              toast.show();
-              return null;
-            });
+      MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.RED))
+              .thenAccept(
+                      material -> {
+                          brushRenderable =
+                                  ShapeFactory.makeSphere(0.1f, new Vector3(0.0f, 0.15f, 0.0f), material); });
 
-    arFragment.setOnTapArPlaneListener(
-        (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
-          if (andyRenderable == null) {
-            return;
-          }
+    arFragment.getArSceneView().getScene().setOnTouchListener((hitTestResult, motionEvent) -> {
+        if (brushRenderable != null) {
+            Frame frame = arFragment.getArSceneView().getArFrame();
+            for(HitResult hitResult : frame.hitTest(motionEvent)) {
+                Anchor anchor = hitResult.createAnchor();
+                AnchorNode anchorNode = new AnchorNode(anchor);
+                anchorNode.setParent(arFragment.getArSceneView().getScene());
 
-          if (plane.getType() != Type.HORIZONTAL_UPWARD_FACING) {
-            return;
-          }
+                // Create the transformable andy and add it to the anchor.
+                TransformableNode andy = new TransformableNode(arFragment.getTransformationSystem());
+                andy.setParent(anchorNode);
+                andy.setRenderable(brushRenderable);
+                andy.select();
+            }
+        }
 
-          // Create the Anchor.
-          Anchor anchor = hitResult.createAnchor();
-          AnchorNode anchorNode = new AnchorNode(anchor);
-          anchorNode.setParent(arFragment.getArSceneView().getScene());
-
-          // Create the transformable andy and add it to the anchor.
-          TransformableNode andy = new TransformableNode(arFragment.getTransformationSystem());
-          andy.setParent(anchorNode);
-          andy.setRenderable(andyRenderable);
-          andy.select();
-        });
+        return true;
+    });
   }
 }
