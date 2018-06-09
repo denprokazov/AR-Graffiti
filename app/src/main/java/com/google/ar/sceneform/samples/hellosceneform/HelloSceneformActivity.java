@@ -24,6 +24,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -31,6 +32,7 @@ import com.google.ar.core.Anchor;
 import com.google.ar.core.Frame;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Pose;
+import com.google.ar.core.Session;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.Color;
@@ -74,24 +76,20 @@ public class HelloSceneformActivity extends AppCompatActivity {
             double distance = LocationHelper.distance(testLatitude, currentLatitude, testLongitude, currentLongitude, 0.0,0.0);
             double bearing = LocationHelper.bearing(testLatitude, currentLatitude, testLongitude, currentLongitude);
 
-
             Pose pose = arFragment.getArSceneView().getArFrame().getCamera().getPose();
-            pose.
-            AnchorNode anchorNode = new AnchorNode(anchor);
-            anchorNode.setParent(arFragment.getArSceneView().getScene());
+            pose.compose(Pose.makeTranslation(0, 0.5f, 0));
 
-            // Create the transformable brush and add it to the anchor.
+            Session session = arFragment.getArSceneView().getSession();
+
+            AnchorNode anchorNode = new AnchorNode(session.createAnchor(pose));
+            anchorNode.setParent(arFragment.getArSceneView().getScene());
+            
             TransformableNode brush = new TransformableNode(arFragment.getTransformationSystem());
             brush.setParent(anchorNode);
             brush.setRenderable(brushRenderable);
             brush.select();
 
         });
-
-        ViewRenderable.builder()
-                .setView(this, R.layout.coordinates_view_renderable)
-                .build()
-                .thenAccept(viewRenderable -> testViewRenderable = viewRenderable);
 
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
 
@@ -106,7 +104,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
         ArPermissionHelper.requestPermission(this);
 
         LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
 
         LocationListener locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
@@ -131,6 +128,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
                     );
             return;
         }
+
         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
     }
 
@@ -140,7 +138,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
                 Frame frame = arFragment.getArSceneView().getArFrame();
                 for (HitResult hitResult : frame.hitTest(motionEvent)) {
                     if(!wasTouchedOnce) {
-                        //ox nado pospat chtole
                         Anchor anchor = hitResult.createAnchor();
                         AnchorNode anchorNode = new AnchorNode(anchor);
                         anchorNode.setParent(arFragment.getArSceneView().getScene());
@@ -152,7 +149,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
                         locationView.select();
 
                         wasTouchedOnce = true;
-
                     } else {
                         Anchor anchor = hitResult.createAnchor();
                         AnchorNode anchorNode = new AnchorNode(anchor);
@@ -169,6 +165,10 @@ public class HelloSceneformActivity extends AppCompatActivity {
             }
 
             return true;
+        });
+
+        arFragment.getArSceneView().getScene().setOnUpdateListener(frameTime -> {
+            arFragment.getArSceneView().getArFrame().getCamera().getPose().
         });
     }
 
