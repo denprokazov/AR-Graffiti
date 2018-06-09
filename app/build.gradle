@@ -55,6 +55,10 @@ dependencies {
     implementation "com.google.ar.sceneform.ux:sceneform-ux:1.0.0"
     implementation "com.android.support:appcompat-v7:27.1.1"
     implementation "com.android.support:design:27.1.1"
+    compile 'com.cocoahero.android:geojson:1.0.1@jar'
+    compile 'com.github.appoly:ARCore-Location:1.0.5'
+    implementation 'com.mapbox.mapboxsdk:mapbox-android-sdk:6.1.3'
+
 }
 
 apply plugin: 'com.google.ar.sceneform.plugin'
