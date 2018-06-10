@@ -75,7 +75,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
 //        AddLocationButtonHandler();
 //        AddPushButtonHandler();
 
-        CreateBrushRenderable(GetNewBrushSize(), 0xFF0000);
+        CreateBrushRenderable(GetNewBrushSize());
         AddArFragmentListeners();
         SetupLocationListener();
 
@@ -246,7 +246,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
         if (background instanceof ColorDrawable)
             mCurrentColor = ((ColorDrawable) background).getColor();
 
-        Log.d(TAG, String.format("COLOR PRESSED: %d", color));
+//        Log.d(TAG, String.format("COLOR PRESSED: %d", color));
         CreateBrushRenderable(GetNewBrushSize());
     }
 }
