@@ -57,6 +57,7 @@
           android:layout_gravity="end"
           android:background="@drawable/ok_button"
           app:srcCompat="@drawable/done_icon"
+          android:onClick="uploadImage"
           tools:ignore="MissingConstraints" />
     </LinearLayout>
 
@@ -91,5 +92,11 @@
         android:layout_marginEnd="24dp"
         android:onClick="clickButton"
         android:background="@drawable/bluebutton" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="placeOnGps"
+        />
   </LinearLayout>
 </LinearLayout>

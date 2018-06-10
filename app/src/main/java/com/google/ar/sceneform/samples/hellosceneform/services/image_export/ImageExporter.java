@@ -2,6 +2,7 @@ package com.google.ar.sceneform.samples.hellosceneform.services.image_export;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 
 import java.io.ByteArrayOutputStream;
@@ -9,9 +10,9 @@ import java.io.OutputStream;
 import java.util.Collection;
 
 public class ImageExporter {
-    public static int PIXEL_PER_METER = 250;
+    public static int PIXEL_PER_METER = 1000;
 
-    public static OutputStream Export(Collection<Point> points) {
+    public static Bitmap Export(Collection<Point> points) {
         float minX = 0;
         float minXSize = 0;
 
@@ -46,31 +47,33 @@ public class ImageExporter {
             }
         }
 
-        int width = (int)(maxX + maxXSize / 2 - minX - minXSize / 2) * PIXEL_PER_METER;
-        int height = (int)(maxY + maxYSize / 2 - minY - minYSize / 2) * PIXEL_PER_METER;
+        int width = (int)((maxX - minX) * PIXEL_PER_METER);
+        int height = (int)((maxY - minY) * PIXEL_PER_METER);
 
         width = width > 0 ? width : 1;
         height = height > 0 ? height : 1;
 
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_4444);
 
         Canvas canvas = new Canvas(bitmap);
 
         for(Point point : points) {
             Paint paint = new Paint();
-            paint.setColor(point.color);
+            paint.setColor(Color.RED);
 
-            float left = point.x - point.size / 2;
-            float right = point.x - point.size / 2;
-            float top = point.y - point.size / 2;
-            float bottom = point.y - point.size / 2;
+            float left = (point.x - point.size - minX) * PIXEL_PER_METER;
+            float right = (point.x + point.size - minX) * PIXEL_PER_METER;
+            float top = (point.y - point.size - minY) * PIXEL_PER_METER;
+            float bottom = (point.y + point.size - minY) * PIXEL_PER_METER;
 
-            canvas.drawOval(left, top, right, bottom, paint);
+            canvas.drawOval(
+                    left,
+                    top,
+                    right,
+                    bottom,
+                    paint);
         }
 
-        OutputStream fos = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
-
-        return fos;
+        return bitmap;
     }
 }
