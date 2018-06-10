@@ -73,7 +73,10 @@ public class MainActivity extends AppCompatActivity {
 
         arButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, HelloSceneformActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(intent);
+
+            finish();
         });
     }
 
