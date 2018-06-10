@@ -65,9 +65,11 @@ import com.google.ar.sceneform.samples.hellosceneform.services.image_export.Poin
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.gson.Gson;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.squareup.picasso.Picasso;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.UUID;
 
 import okhttp3.Call;
@@ -89,15 +91,12 @@ public class HelloSceneformActivity extends AppCompatActivity {
     private ModelRenderable brushRenderable;
 
     private LocationManager locationManager;
-    private LocationListener locationListener;
-    private ViewRenderable grafittiViewRenderable;
 
     private int mCurrentColor;
-    
-    double graffitiLatitude = 53.8902966;
-    double graffitiLongtitude = 27.5689460;
 
     private final Gson gson = new Gson();
+
+    private ArrayList<Node> graffitiNodes;
 
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
@@ -116,12 +115,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
         AddSeekBarChangeListener();
 
         MediaManager.init(this);
-
-        ViewRenderable.builder()
-                .setView(this, R.layout.graffity)
-                .build()
-                .thenAccept(renderable -> grafittiViewRenderable = renderable);
-
     }
 
     public void AddSeekBarChangeListener() {
@@ -154,46 +147,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
     private void SetupLocationListener() {
         ArPermissionHelper.requestPermission(this);
 
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
-        final Activity activity = this;
-
-        locationListener = new LocationListener() {
-            public void onLocationChanged(Location location) {
-                double latitude = location.getLatitude();
-                double longtitude = location.getLongitude();
-
-                String toast = String.format("Real Lat, Lang   : %9.7f %9.7f", latitude, longtitude);
-
-                Toast.makeText(activity, toast, Toast.LENGTH_LONG);
-
-                double distance = LocationHelper.distance(latitude, graffitiLatitude, longtitude, graffitiLongtitude, 0.0, 0.0);
-                double bearing = LocationHelper.bearing(latitude, graffitiLatitude, longtitude, graffitiLongtitude);
-
-                float xTranslation = (float) (Math.sin(bearing) * distance);
-                float zTranslation = (float) (Math.cos(bearing) * distance);
-
-                toast = String.format("Real Lat, Lang   : %9.7f %9.7f", latitude, longtitude);
-                String toast2 = String.format("Goal Lat, Lang   : %9.7f %9.7f", graffitiLatitude, graffitiLongtitude);
-                String toast3 = String.format("Distance, Bearing: %9.7f %9.7f", distance, bearing);
-                String toast4 = String.format("XCoord,   ZCoord : %9.7f %9.7f", xTranslation, zTranslation);
-
-                ((TextView) activity.findViewById(R.id.log_gps)).setText(String.format("%s\n%s\n%s\n%s", toast, toast2, toast3, toast4));
-            }
-
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-                Toast.makeText(activity, "onStatusChanged", Toast.LENGTH_SHORT);
-            }
-
-            public void onProviderEnabled(String provider) {
-                Toast.makeText(activity, "onProviderEnabled", Toast.LENGTH_SHORT);
-            }
-
-            public void onProviderDisabled(String provider) {
-                Toast.makeText(activity, "onProviderDisabled", Toast.LENGTH_SHORT);
-            }
-        };
-
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1
@@ -201,7 +154,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
             return;
         }
 
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
     }
 
     private void AddArFragmentListeners() {
@@ -235,12 +188,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
     }
 
     private void CreateBrushRenderable() {
-        int R = mCurrentColor % 256;
-        int G = (mCurrentColor / 256) % 256;
-        int B = (mCurrentColor / 256 / 256) % 256;
-        int A = 0;
-
-        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.argb(A, R, G, B)))
+        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.toArgb(mCurrentColor)))
                 .thenAccept(
                         material -> {
                             brushRenderable =
@@ -325,7 +273,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     public void placeOnGps(View view) {
-        new DownloadGraffitiesTask().execute();
+        new DownloadGraffitiesTask(view.getContext()).execute();
     }
 
     public void uploadGraffiti(String imageUrl) {
@@ -415,78 +363,46 @@ public class HelloSceneformActivity extends AppCompatActivity {
     }
 
     @SuppressLint("MissingPermission")
-    private void updateGrafiitiFromServer(Graffiti graffiti) {
-        if(grafittiViewRenderable == null) {
-            return;
-        }
+    private void updateGraffitiFromServer(Graffiti graffiti) {
+        ViewRenderable.builder()
+                .setView(this, R.layout.graffity)
+                .build()
+                .thenAccept(renderable -> {
+                    ViewRenderable grafittiViewRenderable = renderable;
 
-        final ImageView view = grafittiViewRenderable.getView().findViewById(R.id.graffity_in_ar);
-        ImageView testView = findViewById(R.id.test_image_loading);
+                    final ImageView view = grafittiViewRenderable.getView().findViewById(R.id.graffity_in_ar);
 
-        new DownloadImageTask(view).execute(graffiti.getImage());
-        new DownloadImageTask(testView).execute(graffiti.getImage());
+                    Picasso.get().load(graffiti.getImage()).into(view);
 
-        @SuppressLint("MissingPermission")
-        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    Node graffitiArNode = new Node();
 
-        double userLatitude = location.getLatitude();
-        double userLongtitude = location.getLongitude();
+                    graffitiArNode.setRenderable(grafittiViewRenderable);
+                    graffitiArNode.setWorldPosition(new Vector3(4, 0, 0));
+                    graffitiArNode.setWorldRotation(new Quaternion());
+                    graffitiArNode.setLocalRotation(new Quaternion());
+                    graffitiArNode.setParent(arFragment.getArSceneView().getScene());
 
-        double distance = LocationHelper.distance(userLatitude, graffitiLatitude, userLongtitude, graffitiLongtitude, 0.0, 0.0);
-        double bearing = LocationHelper.bearing(userLatitude, graffitiLatitude, userLongtitude, graffitiLongtitude);
-
-        if(arFragment.getArSceneView().getArFrame().getCamera().getTrackingState() != TrackingState.TRACKING) {
-            return;
-        }
-
-//        Toast.makeText(this, String.format("Dist, bear: %f %f", distance, bearing), Toast.LENGTH_LONG).show();
-
-        float xTranslation = (float) (Math.sin(bearing) * distance);
-        float zTranslation = (float) (Math.cos(bearing) * distance);
-
-        Node graffitiArNode = new Node();
-
-        graffitiArNode.setRenderable(grafittiViewRenderable);
-//        graffiti.setWorldPosition(new Vector3(xTranslation, 0, zTranslation));
-        graffitiArNode.setWorldPosition(new Vector3(4, 0, 0));
-        graffitiArNode.setWorldRotation(new Quaternion());
-        graffitiArNode.setLocalRotation(new Quaternion());
-        graffitiArNode.setParent(arFragment.getArSceneView().getScene());
-
-//        graffitiArNode.setOnTapListener((hitTestResult, motionEvent) -> Toast.makeText(this, "CLICK ON AR GRAFFITI", Toast.LENGTH_LONG));
+                    graffitiNodes.add(graffitiArNode);
+                });
     }
 
-    private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
-        ImageView bmImage;
-
-        public DownloadImageTask(ImageView bmImage) {
-            this.bmImage = bmImage;
+    public void clear(View view) {
+        for(Anchor anchor : arFragment.getArSceneView().getSession().getAllAnchors()) {
+            anchor.detach();
         }
 
-        @Override
-        @WorkerThread
-        protected Bitmap doInBackground(String... urls) {
-            String urldisplay = urls[0];
-            Bitmap mIcon11 = null;
-            try {
-                InputStream in = new java.net.URL(urldisplay).openStream();
-                mIcon11 = BitmapFactory.decodeStream(in);
-            } catch (Exception e) {
-                Log.e("Error", e.getMessage());
-                e.printStackTrace();
-            }
-            return mIcon11;
-        }
-
-        @Override
-        @MainThread
-        protected void onPostExecute(Bitmap result) {
-            Toast.makeText(bmImage.getContext(), "I DOWNLOADED BITMAP", Toast.LENGTH_LONG);
-            bmImage.setImageBitmap(result);
+        for(Node node : graffitiNodes) {
+            node.setParent(null);
         }
     }
 
     private class DownloadGraffitiesTask extends AsyncTask<Void, Void, GraffitiParentNode> {
+        Context context;
+
+        public DownloadGraffitiesTask(Context context) {
+            this.context = context;
+        }
+
         @Override
         @WorkerThread
         protected GraffitiParentNode doInBackground(Void... voids)  {
@@ -496,9 +412,11 @@ public class HelloSceneformActivity extends AppCompatActivity {
         @Override
         @MainThread
         protected void onPostExecute(GraffitiParentNode graffitiParentNode) {
-            for(Graffiti graffiti : graffitiParentNode.getMessage()) {
-                updateGrafiitiFromServer(graffiti);
-            }
+            updateGraffitiFromServer(graffitiParentNode.getMessage().get(0));
+            Toast.makeText(context, "TEST", Toast.LENGTH_LONG).show();
+//            for(Graffiti graffiti : graffitiParentNode.getMessage()) {
+//                updateGraffitiFromServer(graffiti);
+//            }
         }
     }
 }
