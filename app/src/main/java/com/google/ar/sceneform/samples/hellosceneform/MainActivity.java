@@ -1,14 +1,22 @@
 package com.google.ar.sceneform.samples.hellosceneform;
 
+import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.widget.Button;
 import android.widget.ImageButton;
 
+import com.google.ar.sceneform.samples.hellosceneform.helpers.ArPermissionHelper;
+import com.google.ar.sceneform.samples.hellosceneform.models.Area;
 import com.mapbox.mapboxsdk.Mapbox;
+import com.mapbox.mapboxsdk.annotations.Marker;
+import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.annotations.PolygonOptions;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.maps.MapView;
@@ -20,28 +28,48 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private MapView mapView;
-    private List<LatLng> latLngs = new ArrayList<LatLng>();
+    private List<Area> areas = new ArrayList<Area>();
 
+
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+
+    @SuppressLint("MissingPermission")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        latLngs.add(new LatLng(53.8999964, 27.5666644));
-        latLngs.add(new LatLng(53.899654, 27.56756));
+        setContentView(R.layout.map_screen);
+
+
+        areas.add(new Area(new LatLng(53.8999964, 27.5666644), "gang1"));
+        areas.add(new Area(new LatLng(53.89, 27.57756), "gang2"));
+        ArPermissionHelper.requestPermission(this);
+
         
         Mapbox.getInstance(this, getString(R.string.access_token));
 
-        setContentView(R.layout.map_screen);
         mapView = findViewById(R.id.mapView);
         ImageButton arButton = findViewById(R.id.openArButton);
+
 
         mapView.onCreate(savedInstanceState);
 
 
         mapView.getMapAsync(mapboxMap -> {
-            for (LatLng latLng: latLngs) {
-                drawPolygon(mapboxMap, latLng, "#E82020");
+
+            for (Area area: areas) {
+                String color = "#E82020";
+                if(area.Gang == "gang2") {
+                    color = "#42f45f";
+                }
+                drawPolygon(mapboxMap, area, color);
             }
+            locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
+
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, setupLocationChangeListener(mapboxMap));
+
+
         });
 
         arButton.setOnClickListener(v -> {
@@ -74,17 +102,53 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void drawPolygon(MapboxMap mapboxMap, LatLng center, String color) {
-        List<LatLng> polygon = new ArrayList<>();
-        double delta = 0.005;
-        polygon.add(new LatLng(center.getLatitude()+delta, center.getLongitude()-delta));
-        polygon.add(new LatLng(center.getLatitude()+delta, center.getLongitude()+2*delta));
-        polygon.add(new LatLng(center.getLatitude()-2*delta, center.getLongitude() + 2*delta));
-        polygon.add(new LatLng(center.getLatitude()-2*delta, center.getLongitude()-2*delta));
-        polygon.add(new LatLng(center.getLatitude()+delta, center.getLongitude()-2*delta));
-        mapboxMap.addPolygon(new PolygonOptions()
-                .addAll(polygon)
-                .fillColor(Color.parseColor(color)).alpha(0.5f));
+    @NonNull
+    private LocationListener setupLocationChangeListener(MapboxMap mapboxMap) {
+        return new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                double userLatitude = location.getLatitude();
+                double userLongtitude = location.getLongitude();
+
+                List<Marker> existingMarkers = mapboxMap.getMarkers();
+
+                for(Marker marker : existingMarkers) {
+                    mapboxMap.removeMarker(marker);
+                }
+
+
+                mapboxMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(userLatitude, userLongtitude)));
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+
+            }
+        };
+    }
+
+    private void drawPolygon(MapboxMap mapboxMap, Area area, String color) {
+        List<LatLng> polygons = new ArrayList<>();
+        double delta = 0.003;
+        polygons.add(new LatLng(area.Latitude+delta, area.Longitude-delta));
+        polygons.add(new LatLng(area.Latitude+delta, area.Longitude+2*delta));
+        polygons.add(new LatLng(area.Latitude-2*delta, area.Longitude + 2*delta));
+        polygons.add(new LatLng(area.Latitude-2*delta, area.Longitude-2*delta));
+        polygons.add(new LatLng(area.Latitude+delta, area.Longitude-2*delta));
+        PolygonOptions polygonOptions = new PolygonOptions().fillColor(Color.parseColor(color)).alpha(0.5f)
+                .addAll(polygons);
+        mapboxMap.addPolygon(polygonOptions);
     }
 
     @Override
