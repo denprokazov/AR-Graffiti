@@ -47,13 +47,13 @@ public class ImageExporter {
             }
         }
 
-        int width = (int)((maxX + maxXSize / 2 - minX - minXSize / 2) * PIXEL_PER_METER);
-        int height = (int)((maxY + maxYSize / 2 - minY - minYSize / 2) * PIXEL_PER_METER);
+        int width = (int)((maxX - minX) * PIXEL_PER_METER);
+        int height = (int)((maxY - minY) * PIXEL_PER_METER);
 
         width = width > 0 ? width : 1;
         height = height > 0 ? height : 1;
 
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_4444);
 
         Canvas canvas = new Canvas(bitmap);
 
@@ -61,10 +61,10 @@ public class ImageExporter {
             Paint paint = new Paint();
             paint.setColor(Color.RED);
 
-            float left = (point.x - point.size / 2 - minX) * PIXEL_PER_METER;
-            float right = (point.x + point.size / 2 - minX) * PIXEL_PER_METER;
-            float top = (point.y - point.size / 2 - minY) * PIXEL_PER_METER;
-            float bottom = (point.y + point.size / 2 - minY) * PIXEL_PER_METER;
+            float left = (point.x - point.size - minX) * PIXEL_PER_METER;
+            float right = (point.x + point.size - minX) * PIXEL_PER_METER;
+            float top = (point.y - point.size - minY) * PIXEL_PER_METER;
+            float bottom = (point.y + point.size - minY) * PIXEL_PER_METER;
 
             canvas.drawOval(
                     left,

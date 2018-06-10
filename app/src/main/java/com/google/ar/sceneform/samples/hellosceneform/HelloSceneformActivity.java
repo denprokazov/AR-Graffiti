@@ -139,7 +139,9 @@ public class HelloSceneformActivity extends AppCompatActivity {
                     grafittiViewRenderable = renderable;
                     ImageView view = (ImageView) grafittiViewRenderable.getView();
 
-                    Glide.with(view).load("http://goo.gl/gEgYUd").into(view);
+                    Glide.with(view)
+                            .load("http://goo.gl/gEgYUd")
+                            .into(view);
                 });
 
     }
@@ -375,6 +377,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
                         for(Anchor anchor : arFragment.getArSceneView().getSession().getAllAnchors()) {
                             anchor.detach();
                         }
+                        uploadGraffiti((String)resultData.get("secure_url"));
                     }
 
                     @Override
@@ -422,7 +425,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
                         latitude,
                         "gang")); //todo shared pref
                 Request request = new Request.Builder()
-                        .url("http://localhost:6778/graffity")
+                        .url("http://176.9.2.82:6778/graffity")
                         .post(body)
                         .addHeader("content-type", "application/json")
                         .addHeader("authorization", "Bearer 123")
