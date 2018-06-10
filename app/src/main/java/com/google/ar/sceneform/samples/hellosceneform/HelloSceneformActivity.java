@@ -17,6 +17,7 @@ package com.google.ar.sceneform.samples.hellosceneform;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -92,37 +93,93 @@ public class HelloSceneformActivity extends AppCompatActivity {
     private void AddLocationButtonHandler() {
         final Button button = findViewById(R.id.location);
         button.setOnClickListener(v -> {
-            double distance = LocationHelper.distance(testLatitude, currentLatitude, testLongitude, currentLongitude, 0.0,0.0);
-            double bearing = LocationHelper.bearing(testLatitude, currentLatitude, testLongitude, currentLongitude);
-
-            Session session = arFragment.getArSceneView().getSession();
-            Pose pose = arFragment.getArSceneView().getArFrame().getCamera().getPose();
-
-            pose.compose(Pose.makeTranslation(0, 0.5f, 0));
-
-            AnchorNode anchorNode = new AnchorNode(session.createAnchor(pose));
-            anchorNode.setParent(arFragment.getArSceneView().getScene());
-
-            TransformableNode brush = new TransformableNode(arFragment.getTransformationSystem());
-            brush.setParent(anchorNode);
-            brush.setRenderable(brushRenderable);
-            brush.select();
-
-            Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-
-            Log.d("TAG", String.valueOf(location.getLatitude()));
-            Log.d("TAG", String.valueOf(location.getLongitude()));
+            LoadGraffitiesFromServer();
+//            double distance = LocationHelper.distance(testLatitude, currentLatitude, testLongitude, currentLongitude, 0.0,0.0);
+//            double bearing = LocationHelper.bearing(testLatitude, currentLatitude, testLongitude, currentLongitude);
+//
+//            Session session = arFragment.getArSceneView().getSession();
+//            Pose pose = arFragment.getArSceneView().getArFrame().getCamera().getPose();
+//
+//            pose.compose(Pose.makeTranslation(0, 0.5f, 0));
+//
+//            AnchorNode anchorNode = new AnchorNode(session.createAnchor(pose));
+//            anchorNode.setParent(arFragment.getArSceneView().getScene());
+//
+//            TransformableNode brush = new TransformableNode(arFragment.getTransformationSystem());
+//            brush.setParent(anchorNode);
+//            brush.setRenderable(brushRenderable);
+//            brush.select();
         });
     }
 
+    @SuppressLint("MissingPermission")
+    private void LoadGraffitiesFromServer() {
+        double graffitiLatitude = 53.890586; //53.8902951;
+        double graffitiLongtitude = 27.565978; //27.5688288;
+
+        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+        double userLatitude = location.getLatitude();
+        double userLongtitude = location.getLongitude();
+
+        double distance = LocationHelper.distance(userLatitude, graffitiLatitude, userLongtitude, graffitiLongtitude, 0.0,0.0);
+        double bearing = LocationHelper.bearing(userLatitude, graffitiLatitude, userLongtitude, graffitiLongtitude);
+
+        float zTranslation = (float) (Math.sin(bearing) * distance);
+        float xTranslation = (float) (Math.cos(bearing) * distance);
+
+        Toast.makeText(this, String.format("Distance, Bearing: %f %f. xTranslation, zTranslation: %f %f", distance, bearing, xTranslation, zTranslation), Toast.LENGTH_LONG).show();
+
+//        Toast.makeText(this, String.format("xTranslation, zTranslation: %f %f", xTranslation, zTranslation), Toast.LENGTH_LONG).show();
+
+        Session session = arFragment.getArSceneView().getSession();
+        Pose pose = arFragment.getArSceneView().getArFrame().getCamera().getPose();
+
+        Pose graffitiPose = pose.extractTranslation()
+                .compose(Pose.makeTranslation(zTranslation, 0.5f, xTranslation))
+                .extractTranslation();
+
+//        Toast.makeText(this, String.format("%s", graffitiPose.getTranslation().toString()), Toast.LENGTH_LONG).show();
+
+        AnchorNode anchorNode = new AnchorNode(session.createAnchor(graffitiPose));
+
+        TransformableNode brush = new TransformableNode(arFragment.getTransformationSystem());
+        brush.setParent(anchorNode);
+        brush.setRenderable(brushRenderable);
+        brush.select();
+    }
+
+    @SuppressLint("MissingPermission")
     private void AddPushButtonHandler() {
         final Button button = findViewById(R.id.post_image);
+
         button.setOnClickListener(v -> {
+            Log.d(TAG, arFragment.getArSceneView().getScene().getCamera().getWorldPosition().toString());
+
+            Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+            double latitude = location.getLatitude();
+            double longtitude = location.getLongitude();
+
+            String toast = String.format("Lat, Lang: %9.7f %9.7f", latitude, longtitude);
+
+            Toast.makeText(button.getContext(), toast, Toast.LENGTH_LONG).show();
+
             Collection<Plane> planes = arFragment.getArSceneView().getSession().getAllTrackables(Plane.class);
 
             for(Plane plane : planes) {
                 Collection<Point> points = PlaneAnchorsToPointsMapper.Map(plane);
                 OutputStream outputStream = ImageExporter.Export(points);
+
+                float[] translations = plane.getCenterPose().getTranslation();
+
+                float x = plane.getCenterPose().tx();
+                float z = plane.getCenterPose().tz();
+
+                Log.d(TAG, translations.toString());
+
+                double graffityLatitude = latitude + z / 111111.1;
+                double graffityLongtitude = longtitude + x / 111111.1 * Math.cos(graffityLatitude);
             }
         });
     }
@@ -132,23 +189,40 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        final Context context = this;
+        final Activity activity = this;
 
         locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
-                Toast.makeText(context, "onLocationChanged", Toast.LENGTH_SHORT);
+                double graffitiLatitude = 53.8902951; // 53.890586;
+                double graffitiLongtitude = 27.5688288; // 27.565978;
+
+                double latitude = location.getLatitude();
+                double longtitude = location.getLongitude();
+
+                double distance = LocationHelper.distance(latitude, graffitiLatitude, longtitude, graffitiLongtitude, 0.0,0.0);
+                double bearing = LocationHelper.bearing(latitude, graffitiLatitude, longtitude, graffitiLongtitude);
+
+                float xTranslation = (float) (Math.sin(bearing) * distance);
+                float zTranslation = (float) (Math.cos(bearing) * distance);
+
+                String toast = String.format( "Real Lat, Lang   : %9.7f %9.7f", latitude, longtitude);
+                String toast2 = String.format("Goal Lat, Lang   : %9.7f %9.7f", graffitiLatitude, graffitiLongtitude);
+                String toast3 = String.format("Distance, Bearing: %9.7f %9.7f", distance, bearing);
+                String toast4 = String.format("XCoord,   ZCoord : %9.7f %9.7f", xTranslation , zTranslation);
+
+                ((TextView)activity.findViewById(R.id.log_gps)).setText(String.format("%s\n%s\n%s\n%s", toast, toast2, toast3, toast4));
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
-                Toast.makeText(context, "onStatusChanged", Toast.LENGTH_SHORT);
+                Toast.makeText(activity, "onStatusChanged", Toast.LENGTH_SHORT);
             }
 
             public void onProviderEnabled(String provider) {
-                Toast.makeText(context, "onProviderEnabled", Toast.LENGTH_SHORT);
+                Toast.makeText(activity, "onProviderEnabled", Toast.LENGTH_SHORT);
             }
 
             public void onProviderDisabled(String provider) {
-                Toast.makeText(context, "onProviderDisabled", Toast.LENGTH_SHORT);
+                Toast.makeText(activity, "onProviderDisabled", Toast.LENGTH_SHORT);
             }
         };
 
@@ -202,7 +276,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
                 .thenAccept(
                         material -> {
                             brushRenderable =
-                                    ShapeFactory.makeSphere(0.025f, new Vector3(0.0f, 0.15f, 0.0f), material);
+                                    ShapeFactory.makeSphere(0.125f, new Vector3(0.0f, 0.15f, 0.0f), material);
                         });
     }
 }
