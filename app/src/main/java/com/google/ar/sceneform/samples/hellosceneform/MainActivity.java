@@ -75,10 +75,6 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, HelloSceneformActivity.class);
             startActivity(intent);
         });
-
-
-
-
     }
 
     private void getZones(MapboxMap mapboxMap) {
