@@ -1,27 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:layout_width="match_parent"
-    android:layout_height="match_parent">
 
-    <EditText
-        android:id="@+id/user_id"
-        android:layout_width="match_parent"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_gravity="center_vertical|center_horizontal"
+    android:background="@android:color/background_dark">
+    <TextView
+        android:id="@+id/textView4"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:ems="10"
-        android:inputType="textPersonName"
-        android:text="user id" />
+        android:text="CHOOSE YOUR SIDE"
+        android:layout_marginTop="50dp"
+        android:textColor="@android:color/white"
+        android:layout_gravity="center_horizontal"
+        android:textSize="20dp" />
 
-    <EditText
-        android:id="@+id/gang"
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:ems="10"
-        android:inputType="textPersonName"
-        android:text="Gang" />
+        android:layout_gravity="center_vertical|center_horizontal"
+        android:orientation="horizontal">
 
-    <Button
-        android:id="@+id/log_in"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Login" />
-</LinearLayout>
+        <ImageButton
+            android:id="@+id/redSide"
+            android:layout_width="77dp"
+            android:layout_height="248dp"
+            android:layout_margin="10dp"
+            android:layout_weight="1"
+            android:background="@drawable/saudi"
+            android:scaleType="fitCenter"/>
+
+        <ImageButton
+            android:id="@+id/greenSide"
+            android:layout_width="73dp"
+            android:layout_height="250dp"
+            android:layout_margin="10dp"
+            android:layout_weight="1"
+            android:background="@drawable/russia"
+            android:scaleType="fitCenter"/>
+    </LinearLayout>
+</FrameLayout>
+
