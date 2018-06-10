@@ -4,6 +4,8 @@
     android:layout_height="match_parent">
 
     <ImageView
+        android:id="@+id/graffity_in_ar"
         android:layout_width="1000dp"
-        android:layout_height="1000dp" />
+        android:layout_height="1000dp"
+        android:background="@drawable/redbutton" />
 </FrameLayout>

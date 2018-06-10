@@ -24,6 +24,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -58,6 +59,8 @@ import com.google.ar.sceneform.rendering.ViewRenderable;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.ArPermissionHelper;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.LocationHelper;
 import com.google.ar.sceneform.samples.hellosceneform.models.Graffiti;
+import com.google.ar.sceneform.samples.hellosceneform.models.Graffiti;
+import com.google.ar.sceneform.samples.hellosceneform.models.GraffitiParentNode;
 import com.google.ar.sceneform.samples.hellosceneform.services.image_export.ImageExporter;
 import com.google.ar.sceneform.samples.hellosceneform.services.image_export.PlaneAnchorsToPointsMapper;
 import com.google.ar.sceneform.samples.hellosceneform.services.image_export.Point;
@@ -69,6 +72,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
+import java.io.InputStream;
 import java.util.UUID;
 
 import okhttp3.Call;
@@ -80,6 +84,9 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 import static com.google.ar.sceneform.samples.hellosceneform.LoginActivity.USER_PREFS;
+import java.io.ByteArrayOutputStream;
+import java.util.Collection;
+import java.util.Map;
 
 public class HelloSceneformActivity extends AppCompatActivity {
     private static final String TAG = HelloSceneformActivity.class.getSimpleName();
