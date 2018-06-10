@@ -51,8 +51,23 @@ import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.ArPermissionHelper;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.LocationHelper;
+import com.google.ar.sceneform.samples.hellosceneform.models.Graffiti;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
+import com.google.gson.Gson;
+import com.mapbox.mapboxsdk.geometry.LatLng;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class HelloSceneformActivity extends AppCompatActivity {
     private static final String TAG = HelloSceneformActivity.class.getSimpleName();
@@ -64,6 +79,8 @@ public class HelloSceneformActivity extends AppCompatActivity {
     private LocationListener locationListener;
 
     private int mCurrentColor;
+
+    private final Gson gson = new Gson();
 
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
@@ -194,7 +211,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
             return;
         }
 
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
     }
 
     private void AddArFragmentListeners() {
@@ -249,5 +266,78 @@ public class HelloSceneformActivity extends AppCompatActivity {
         }
 
         CreateBrushRenderable();
+    }
+
+
+
+    public void uploadGraffiti(String imageUrl) {
+
+        @SuppressLint("MissingPermission") Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        Thread thread = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                OkHttpClient client = new OkHttpClient();
+                double latitude = location.getLatitude();
+                double longtitude = location.getLongitude();
+                MediaType mediaType = MediaType.parse("application/json");
+                RequestBody body = RequestBody.create(mediaType, String.format(
+                        "{\"image\": \"%s\"," +
+                                "\"id\": \"%s\"," +
+                                "\"userid\": \"%s\"," +
+                                "\"longitude\": %s" +
+                                "\"latitude\": %s," +
+                                "\"height\": 0," +
+                                "\"message\": \"Test\"," +
+                                "\"gang\": \"%s\"}",
+                        imageUrl,
+                        UUID.randomUUID(),
+                        "123",
+                        longtitude,
+                        latitude,
+                        "gang")); //todo shared pref
+                Request request = new Request.Builder()
+                        .url("http://localhost:6778/graffity")
+                        .post(body)
+                        .addHeader("content-type", "application/json")
+                        .addHeader("authorization", "Bearer 123")
+                        .build();
+
+                Response response = null;
+                try {
+                    response = client.newCall(request).execute();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        thread.start();
+    }
+
+    public void updateGraffitiesFromServer(LatLng userPosition) {
+        OkHttpClient client = new OkHttpClient();
+
+                MediaType mediaType = MediaType.parse("application/json");
+                RequestBody body = RequestBody.create(mediaType,
+                        String.format("{\"longitude\": %s," +
+                        "\"latitude\": %s}", userPosition.getLatitude(), userPosition.getLongitude()));
+                Request request = new Request.Builder()
+                        .url("http://176.9.2.82:6778/near/graffity/")
+                        .post(body)
+                        .addHeader("content-type", "application/json")
+                        .build();
+
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(Call call, IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    @Override
+                    public void onResponse(Call call, Response response) throws IOException {
+                        Graffiti[] graffities = gson.fromJson(response.body().charStream(), Graffiti[].class);
+                    }
+                });
     }
 }
