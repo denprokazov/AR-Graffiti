@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
             locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
 
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, setupLocationChangeListener(mapboxMap));
+            //locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, setupLocationChangeListener(mapboxMap));
 
             getZones(mapboxMap);
 
