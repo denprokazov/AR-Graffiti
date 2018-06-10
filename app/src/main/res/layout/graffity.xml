@@ -5,7 +5,7 @@
 
     <ImageView
         android:id="@+id/graffity_in_ar"
-        android:layout_width="1000dp"
-        android:layout_height="1000dp"
-        android:background="@drawable/redbutton" />
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/redbutton" />
 </FrameLayout>

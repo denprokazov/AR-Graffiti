@@ -99,4 +99,11 @@
         android:onClick="placeOnGps"
         />
   </LinearLayout>
+
+  <ImageView
+      android:id="@+id/test_image_loading"
+      android:layout_width="200dp"
+      android:layout_height="200dp"
+      android:cropToPadding="true"
+      android:src="@drawable/bluebutton" />
 </LinearLayout>
