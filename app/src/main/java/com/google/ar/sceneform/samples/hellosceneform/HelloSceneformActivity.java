@@ -21,9 +21,12 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.Image;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -34,7 +37,6 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
 import com.cloudinary.android.MediaManager;
 import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
@@ -54,6 +56,7 @@ import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.rendering.ViewRenderable;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.ArPermissionHelper;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.LocationHelper;
+import com.google.ar.sceneform.samples.hellosceneform.models.Graffiti;
 import com.google.ar.sceneform.samples.hellosceneform.models.GraffitiParentNode;
 import com.google.ar.sceneform.samples.hellosceneform.services.image_export.ImageExporter;
 import com.google.ar.sceneform.samples.hellosceneform.services.image_export.PlaneAnchorsToPointsMapper;
@@ -63,6 +66,7 @@ import com.google.gson.Gson;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.UUID;
 
 import okhttp3.Call;
@@ -117,14 +121,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
         ViewRenderable.builder()
                 .setView(this, R.layout.graffity)
                 .build()
-                .thenAccept(renderable -> {
-                    grafittiViewRenderable = renderable;
-                    ImageView view = (ImageView) grafittiViewRenderable.getView();
-
-                    Glide.with(view)
-                            .load("http://goo.gl/gEgYUd")
-                            .into(view);
-                });
+                .thenAccept(renderable -> grafittiViewRenderable = renderable);
 
     }
 
@@ -154,42 +151,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
         return (float) seekBar.getProgress() / 100 + BRUSH_SIZE;
     }
-//
-//    @SuppressLint("MissingPermission")
-//    private void LoadGraffitiesFromServer() {
-//        if(grafittiViewRenderable == null) {
-//            return;
-//        }
-//
-//        @SuppressLint("MissingPermission")
-//        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-//
-//        double worldStartLatitude = location.getLatitude();
-//        double worldStartLongtitude = location.getLongitude();
-//
-//        double distance = LocationHelper.distance(worldStartLatitude, graffitiLatitude, worldStartLongtitude, graffitiLongtitude, 0.0, 0.0);
-//        double bearing = LocationHelper.bearing(worldStartLatitude, graffitiLatitude, worldStartLongtitude, graffitiLongtitude);
-//
-//        if(arFragment.getArSceneView().getArFrame().getCamera().getTrackingState() != TrackingState.TRACKING) {
-//            return;
-//        }
-//
-//        Toast.makeText(this, String.format("Dist, bear: %f %f", distance, bearing), Toast.LENGTH_LONG).show();
-//
-//        float xTranslation = (float) (Math.sin(bearing) * distance);
-//        float zTranslation = (float) (Math.cos(bearing) * distance);
-//
-//        Node graffiti = new Node();
-//
-//        graffiti.setRenderable(grafittiViewRenderable);
-////        graffiti.setWorldPosition(new Vector3(xTranslation, 0, zTranslation));
-//        graffiti.setWorldPosition(new Vector3(4, 0, 0));
-//        graffiti.setWorldRotation(new Quaternion());
-//        graffiti.setLocalRotation(new Quaternion());
-//        graffiti.setParent(arFragment.getArSceneView().getScene());
-//
-//        graffiti.setOnTapListener((hitTestResult, motionEvent) -> Toast.makeText(this, "CLICK ON AR GRAFFITI", Toast.LENGTH_LONG));
-//    }
 
     private void SetupLocationListener() {
         ArPermissionHelper.requestPermission(this);
@@ -434,7 +395,13 @@ public class HelloSceneformActivity extends AppCompatActivity {
                         String body = response.body().string();
                         GraffitiParentNode graffitiParentNodeParentNode = gson.fromJson(body, GraffitiParentNode.class);
 
+                        for(Graffiti graffiti : graffitiParentNodeParentNode.getMessage()) {
+                            if(graffiti.getLatitude().equals(0)) {
+                                continue;
+                            }
 
+                            updateGrafiitiFromServer(graffiti);
+                        }
                     }
                 });
     }
@@ -453,4 +420,71 @@ public class HelloSceneformActivity extends AppCompatActivity {
         mCurrentColor = android.graphics.Color.BLUE;
         CreateBrushRenderable();
     }
+
+    @SuppressLint("MissingPermission")
+    private void updateGrafiitiFromServer(Graffiti graffiti) {
+        if(grafittiViewRenderable == null) {
+            return;
+        }
+
+        final ImageView view = grafittiViewRenderable.getView().findViewById(R.id.graffity_in_ar);
+
+        new DownloadImageTask(view).execute(graffiti.getImage());
+
+        @SuppressLint("MissingPermission")
+        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+        double userLatitude = location.getLatitude();
+        double userLongtitude = location.getLongitude();
+
+        double distance = LocationHelper.distance(userLatitude, graffitiLatitude, userLongtitude, graffitiLongtitude, 0.0, 0.0);
+        double bearing = LocationHelper.bearing(userLatitude, graffitiLatitude, userLongtitude, graffitiLongtitude);
+
+        if(arFragment.getArSceneView().getArFrame().getCamera().getTrackingState() != TrackingState.TRACKING) {
+            return;
+        }
+
+//        Toast.makeText(this, String.format("Dist, bear: %f %f", distance, bearing), Toast.LENGTH_LONG).show();
+
+        float xTranslation = (float) (Math.sin(bearing) * distance);
+        float zTranslation = (float) (Math.cos(bearing) * distance);
+
+        Node graffitiArNode = new Node();
+
+        graffitiArNode.setRenderable(grafittiViewRenderable);
+//        graffiti.setWorldPosition(new Vector3(xTranslation, 0, zTranslation));
+        graffitiArNode.setWorldPosition(new Vector3(4, 0, 0));
+        graffitiArNode.setWorldRotation(new Quaternion());
+        graffitiArNode.setLocalRotation(new Quaternion());
+        graffitiArNode.setParent(arFragment.getArSceneView().getScene());
+
+//        graffitiArNode.setOnTapListener((hitTestResult, motionEvent) -> Toast.makeText(this, "CLICK ON AR GRAFFITI", Toast.LENGTH_LONG));
+    }
+
+
+    private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
+        ImageView bmImage;
+
+        public DownloadImageTask(ImageView bmImage) {
+            this.bmImage = bmImage;
+        }
+
+        protected Bitmap doInBackground(String... urls) {
+            String urldisplay = urls[0];
+            Bitmap mIcon11 = null;
+            try {
+                InputStream in = new java.net.URL(urldisplay).openStream();
+                mIcon11 = BitmapFactory.decodeStream(in);
+            } catch (Exception e) {
+                Log.e("Error", e.getMessage());
+                e.printStackTrace();
+            }
+            return mIcon11;
+        }
+
+        protected void onPostExecute(Bitmap result) {
+            bmImage.setImageBitmap(result);
+        }
+    }
+
 }

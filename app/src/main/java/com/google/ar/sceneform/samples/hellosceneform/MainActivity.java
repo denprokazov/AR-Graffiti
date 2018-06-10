@@ -40,8 +40,6 @@ public class MainActivity extends AppCompatActivity {
     private String userId = "";
     private final Gson gson = new Gson();
 
-
-
     private LocationManager locationManager;
     private LocationListener locationListener;
 
