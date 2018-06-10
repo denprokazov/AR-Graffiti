@@ -57,6 +57,7 @@
           android:layout_gravity="end"
           android:background="@drawable/ok_button"
           app:srcCompat="@drawable/done_icon"
+          android:onClick="uploadImage"
           tools:ignore="MissingConstraints" />
     </LinearLayout>
 
