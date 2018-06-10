@@ -22,11 +22,14 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.ShapeDrawable;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -75,10 +78,9 @@ public class HelloSceneformActivity extends AppCompatActivity {
 //        AddLocationButtonHandler();
 //        AddPushButtonHandler();
 
-        CreateBrushRenderable(GetNewBrushSize(), 0xFF0000);
+        CreateBrushRenderable();
         AddArFragmentListeners();
         SetupLocationListener();
-
 
         AddSeekBarChangeListener();
     }
@@ -128,8 +130,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
         Toast.makeText(this, String.format("Distance, Bearing: %f %f. xTranslation, zTranslation: %f %f", distance, bearing, xTranslation, zTranslation), Toast.LENGTH_LONG).show();
 
-//        Toast.makeText(this, String.format("xTranslation, zTranslation: %f %f", xTranslation, zTranslation), Toast.LENGTH_LONG).show();
-
         Session session = arFragment.getArSceneView().getSession();
         Pose pose = arFragment.getArSceneView().getArFrame().getCamera().getPose();
 
@@ -137,11 +137,9 @@ public class HelloSceneformActivity extends AppCompatActivity {
                 .compose(Pose.makeTranslation(zTranslation, 0.5f, xTranslation))
                 .extractTranslation();
 
-//        Toast.makeText(this, String.format("%s", graffitiPose.getTranslation().toString()), Toast.LENGTH_LONG).show();
-
         AnchorNode anchorNode = new AnchorNode(session.createAnchor(graffitiPose));
 
-        TransformableNode brush = new TransformableNode(arFragment.getTransformationSystem());
+        TransformableNode brush = new  TransformableNode(arFragment.getTransformationSystem());
         brush.setParent(anchorNode);
         brush.setRenderable(brushRenderable);
         brush.select();
@@ -226,27 +224,30 @@ public class HelloSceneformActivity extends AppCompatActivity {
         });
     }
 
-    private void CreateBrushRenderable(float brushSize) {
+    private void CreateBrushRenderable() {
         int R = mCurrentColor % 256;
         int G = (mCurrentColor / 256) % 256;
         int B = (mCurrentColor / 256 / 256) % 256;
-        int A = (mCurrentColor / 256 / 256 / 256);
+        int A = 0;
 
         MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.argb(A, R, G, B)))
                 .thenAccept(
                         material -> {
                             brushRenderable =
-                                    ShapeFactory.makeSphere(brushSize, new Vector3(0.0f, 0.1f, 0.0f), material);
+                                    ShapeFactory.makeSphere(GetNewBrushSize(), new Vector3(0.0f, 0.1f, 0.0f), material);
                         });
     }
 
     public void clickButton(View view) {
         Drawable background = view.getBackground();
 
-        if (background instanceof ColorDrawable)
-            mCurrentColor = ((ColorDrawable) background).getColor();
+        if (background instanceof GradientDrawable) {
+            GradientDrawable shapeDrawable = (GradientDrawable) background;
+            mCurrentColor = Math.abs(shapeDrawable.getColor().getDefaultColor());
 
-        Log.d(TAG, String.format("COLOR PRESSED: %d", color));
-        CreateBrushRenderable(GetNewBrushSize());
+            Toast.makeText(this, String.format("COLOR CHANGED: %d", mCurrentColor), Toast.LENGTH_LONG).show();
+        }
+
+        CreateBrushRenderable();
     }
 }
