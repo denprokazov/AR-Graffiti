@@ -25,9 +25,10 @@ import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.media.Image;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.annotation.MainThread;
+import android.support.annotation.WorkerThread;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -115,8 +116,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
         AddSeekBarChangeListener();
 
         MediaManager.init(this);
-
-        updateGraffitiesFromServer();
 
         ViewRenderable.builder()
                 .setView(this, R.layout.graffity)
@@ -326,7 +325,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     public void placeOnGps(View view) {
-        updateGraffitiesFromServer();
+        new DownloadGraffitiesTask().execute();
     }
 
     public void uploadGraffiti(String imageUrl) {
@@ -363,7 +362,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
     }
 
     @SuppressLint("MissingPermission")
-    public void updateGraffitiesFromServer() {
+    public GraffitiParentNode updateGraffitiesFromServer() {
         Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
         double latitude = location.getLatitude();
@@ -373,38 +372,32 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
         OkHttpClient client = new OkHttpClient();
 
-                MediaType mediaType = MediaType.parse("application/json");
-                RequestBody body = RequestBody.create(mediaType,
-                        String.format("{\"longitude\": %s," +
-                        "\"latitude\": %s}", Double.toString(userPosition.getLatitude()),
-                                Double.toString(userPosition.getLongitude())));
-                Request request = new Request.Builder()
-                        .url("http://176.9.2.82:6778/near/graffity/")
-                        .post(body)
-                        .addHeader("content-type", "application/json")
-                        .build();
+        MediaType mediaType = MediaType.parse("application/json");
+        RequestBody body = RequestBody.create(mediaType,
+                String.format("{\"longitude\": %s," +
+                "\"latitude\": %s}", Double.toString(userPosition.getLatitude()),
+                        Double.toString(userPosition.getLongitude())));
+        Request request = new Request.Builder()
+                .url("http://176.9.2.82:6778/near/graffity/")
+                .post(body)
+                .addHeader("content-type", "application/json")
+                .build();
 
-                client.newCall(request).enqueue(new Callback() {
-                    @Override
-                    public void onFailure(Call call, IOException e) {
-                        e.printStackTrace();
-                    }
+        Response response = null;
+        try {
+            response = client.newCall(request).execute();
 
-                    @Override
-                    public void onResponse(Call call, Response response) throws IOException {
-                        String body = response.body().string();
-                        GraffitiParentNode graffitiParentNodeParentNode = gson.fromJson(body, GraffitiParentNode.class);
+            String responseBody = response.body().string();
+            GraffitiParentNode graffitiParentNodeParentNode = gson.fromJson(responseBody, GraffitiParentNode.class);
 
-                        for(Graffiti graffiti : graffitiParentNodeParentNode.getMessage()) {
-                            if(graffiti.getLatitude().equals(0)) {
-                                continue;
-                            }
+            return graffitiParentNodeParentNode;
 
-                            updateGrafiitiFromServer(graffiti);
-                        }
-                    }
-                });
-    }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+}
 
     public void clickRedButton(View view) {
         mCurrentColor = android.graphics.Color.RED;
@@ -428,8 +421,10 @@ public class HelloSceneformActivity extends AppCompatActivity {
         }
 
         final ImageView view = grafittiViewRenderable.getView().findViewById(R.id.graffity_in_ar);
+        ImageView testView = findViewById(R.id.test_image_loading);
 
         new DownloadImageTask(view).execute(graffiti.getImage());
+        new DownloadImageTask(testView).execute(graffiti.getImage());
 
         @SuppressLint("MissingPermission")
         Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
@@ -461,7 +456,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
 //        graffitiArNode.setOnTapListener((hitTestResult, motionEvent) -> Toast.makeText(this, "CLICK ON AR GRAFFITI", Toast.LENGTH_LONG));
     }
 
-
     private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
         ImageView bmImage;
 
@@ -469,6 +463,8 @@ public class HelloSceneformActivity extends AppCompatActivity {
             this.bmImage = bmImage;
         }
 
+        @Override
+        @WorkerThread
         protected Bitmap doInBackground(String... urls) {
             String urldisplay = urls[0];
             Bitmap mIcon11 = null;
@@ -482,9 +478,27 @@ public class HelloSceneformActivity extends AppCompatActivity {
             return mIcon11;
         }
 
+        @Override
+        @MainThread
         protected void onPostExecute(Bitmap result) {
+            Toast.makeText(bmImage.getContext(), "I DOWNLOADED BITMAP", Toast.LENGTH_LONG);
             bmImage.setImageBitmap(result);
         }
     }
 
+    private class DownloadGraffitiesTask extends AsyncTask<Void, Void, GraffitiParentNode> {
+        @Override
+        @WorkerThread
+        protected GraffitiParentNode doInBackground(Void... voids)  {
+            return updateGraffitiesFromServer();
+        }
+
+        @Override
+        @MainThread
+        protected void onPostExecute(GraffitiParentNode graffitiParentNode) {
+            for(Graffiti graffiti : graffitiParentNode.getMessage()) {
+                updateGrafiitiFromServer(graffiti);
+            }
+        }
+    }
 }
