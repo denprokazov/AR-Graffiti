@@ -41,6 +41,25 @@
           android:splitTrack="false"
           app:seekBarRotation="CW270" /> <!-- Rotation: CW90 or CW270 -->
     </com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:layout_marginTop="20dp"
+        android:layout_gravity="end">
+
+      <ImageButton
+          android:id="@+id/ok_button"
+          android:layout_width="70dp"
+          android:layout_height="40dp"
+          android:layout_margin="20dp"
+          android:layout_gravity="end"
+          android:background="@drawable/ok_button"
+          app:srcCompat="@drawable/done_icon"
+          tools:ignore="MissingConstraints" />
+    </LinearLayout>
+
   </FrameLayout>
 
   <LinearLayout
