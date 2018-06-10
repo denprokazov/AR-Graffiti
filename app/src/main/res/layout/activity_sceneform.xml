@@ -2,13 +2,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".HelloSceneformActivity"
     android:orientation="vertical">
 
   <FrameLayout
       android:layout_width="match_parent"
-      android:layout_weight="1"
-      android:layout_height="match_parent">
+      android:layout_height="match_parent"
+      android:layout_weight="1">
 
     <fragment
         android:id="@+id/ux_fragment"
@@ -17,38 +18,58 @@
         android:layout_height="match_parent" />
 
     <TextView
+        android:id="@+id/log_gps"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:text="TEMP TEXT"
-        android:id="@+id/log_gps"
         android:textColor="#ffffff"
         android:textSize="14sp" />
 
+    <com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper
+        android:layout_width="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_height="200dp" >
+
+      <com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
+          android:id="@+id/mySeekBar"
+          android:layout_width="0dp"
+          android:layout_height="0dp"
+          android:splitTrack="false"
+          android:min="0"
+          android:max="10"
+          android:progress="3"
+          app:seekBarRotation="CW90" /> <!-- Rotation: CW90 or CW270 -->
+    </com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper>
   </FrameLayout>
 
   <LinearLayout
-      android:layout_width="match_parent"
-      android:layout_weight="9"
-      android:layout_height="match_parent">
+      android:layout_width="wrap_content"
+      android:layout_height="32dp"
+      android:gravity="center_vertical|center_horizontal"
+      android:layout_gravity="center_horizontal" >
 
-    <Button xmlns:android="http://schemas.android.com/apk/res/android"
-        android:id="@+id/location"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_weight="0.25"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:text="Test"
-        android:textAlignment="center" />
+    <Button
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:onClick="clickButton"
+        android:background="@drawable/redbutton" />
 
-    <Button xmlns:android="http://schemas.android.com/apk/res/android"
-        android:id="@+id/post_image"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_weight="0.25"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:text="Push"
-        android:textAlignment="center" />
+    <Button
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:onClick="clickButton"
+        android:background="@drawable/greenbutton" />
+
+    <Button
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:onClick="clickButton"
+        android:background="@drawable/bluebutton" />
   </LinearLayout>
 </LinearLayout>

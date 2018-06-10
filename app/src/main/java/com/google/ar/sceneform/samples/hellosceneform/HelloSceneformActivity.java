@@ -20,6 +20,8 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -27,7 +29,8 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.widget.Button;
+import android.view.View;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,14 +48,8 @@ import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.ArPermissionHelper;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.LocationHelper;
-import com.google.ar.sceneform.samples.hellosceneform.services.image_export.ImageExporter;
-import com.google.ar.sceneform.samples.hellosceneform.services.image_export.PlaneAnchorsToPointsMapper;
-import com.google.ar.sceneform.samples.hellosceneform.services.image_export.Point;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
-
-import java.io.OutputStream;
-import java.util.Collection;
 
 public class HelloSceneformActivity extends AppCompatActivity {
     private static final String TAG = HelloSceneformActivity.class.getSimpleName();
@@ -60,14 +57,10 @@ public class HelloSceneformActivity extends AppCompatActivity {
     private ArFragment arFragment;
     private ModelRenderable brushRenderable;
 
-    private double testLatitude = 53.890447;
-    private double testLongitude = 27.5687115;
-
-    private double currentLatitude = 53.8903810;
-    private double currentLongitude = 27.5685724;
-
     private LocationManager locationManager;
     private LocationListener locationListener;
+
+    private int mCurrentColor;
 
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
@@ -79,37 +72,42 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
 
-        // When you build a Renderable, Sceneform loads its resources in the background while returning
-        // a CompletableFuture. Call thenAccept(), handle(), or check isDone() before calling get().
-        CreateBrushRenderable();
+//        AddLocationButtonHandler();
+//        AddPushButtonHandler();
 
-        AddLocationButtonHandler();
-        AddPushButtonHandler();
+        CreateBrushRenderable(GetNewBrushSize(), 0xFF0000);
         AddArFragmentListeners();
         SetupLocationListener();
+
+
+        AddSeekBarChangeListener();
     }
 
-    @SuppressLint("MissingPermission")
-    private void AddLocationButtonHandler() {
-        final Button button = findViewById(R.id.location);
-        button.setOnClickListener(v -> {
-            LoadGraffitiesFromServer();
-//            double distance = LocationHelper.distance(testLatitude, currentLatitude, testLongitude, currentLongitude, 0.0,0.0);
-//            double bearing = LocationHelper.bearing(testLatitude, currentLatitude, testLongitude, currentLongitude);
-//
-//            Session session = arFragment.getArSceneView().getSession();
-//            Pose pose = arFragment.getArSceneView().getArFrame().getCamera().getPose();
-//
-//            pose.compose(Pose.makeTranslation(0, 0.5f, 0));
-//
-//            AnchorNode anchorNode = new AnchorNode(session.createAnchor(pose));
-//            anchorNode.setParent(arFragment.getArSceneView().getScene());
-//
-//            TransformableNode brush = new TransformableNode(arFragment.getTransformationSystem());
-//            brush.setParent(anchorNode);
-//            brush.setRenderable(brushRenderable);
-//            brush.select();
+    public void AddSeekBarChangeListener() {
+        SeekBar seekBar = (SeekBar) findViewById(R.id.mySeekBar);
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
         });
+    }
+
+    public float GetNewBrushSize() {
+        SeekBar seekBar = findViewById(R.id.mySeekBar);
+        float BRUSH_SIZE = 0.125f;
+
+        return (float)seekBar.getProgress() / 100  + BRUSH_SIZE;
     }
 
     @SuppressLint("MissingPermission")
@@ -147,41 +145,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
         brush.setParent(anchorNode);
         brush.setRenderable(brushRenderable);
         brush.select();
-    }
-
-    @SuppressLint("MissingPermission")
-    private void AddPushButtonHandler() {
-        final Button button = findViewById(R.id.post_image);
-
-        button.setOnClickListener(v -> {
-            Log.d(TAG, arFragment.getArSceneView().getScene().getCamera().getWorldPosition().toString());
-
-            Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-
-            double latitude = location.getLatitude();
-            double longtitude = location.getLongitude();
-
-            String toast = String.format("Lat, Lang: %9.7f %9.7f", latitude, longtitude);
-
-            Toast.makeText(button.getContext(), toast, Toast.LENGTH_LONG).show();
-
-            Collection<Plane> planes = arFragment.getArSceneView().getSession().getAllTrackables(Plane.class);
-
-            for(Plane plane : planes) {
-                Collection<Point> points = PlaneAnchorsToPointsMapper.Map(plane);
-                OutputStream outputStream = ImageExporter.Export(points);
-
-                float[] translations = plane.getCenterPose().getTranslation();
-
-                float x = plane.getCenterPose().tx();
-                float z = plane.getCenterPose().tz();
-
-                Log.d(TAG, translations.toString());
-
-                double graffityLatitude = latitude + z / 111111.1;
-                double graffityLongtitude = longtitude + x / 111111.1 * Math.cos(graffityLatitude);
-            }
-        });
     }
 
     private void SetupLocationListener() {
@@ -249,14 +212,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
                     continue;
                 }
 
-                Plane plane = (Plane) hitResult.getTrackable();
-
-                if(plane.getType() == Plane.Type.VERTICAL) {
-                    continue;
-                }
-
-                Log.d(TAG, String.valueOf(plane.hashCode()));
-
                 Anchor anchor = hitResult.createAnchor();
                 AnchorNode anchorNode = new AnchorNode(anchor);
                 anchorNode.setParent(arFragment.getArSceneView().getScene());
@@ -271,12 +226,27 @@ public class HelloSceneformActivity extends AppCompatActivity {
         });
     }
 
-    private void CreateBrushRenderable() {
-        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.RED))
+    private void CreateBrushRenderable(float brushSize) {
+        int R = mCurrentColor % 256;
+        int G = (mCurrentColor / 256) % 256;
+        int B = (mCurrentColor / 256 / 256) % 256;
+        int A = (mCurrentColor / 256 / 256 / 256);
+
+        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.argb(A, R, G, B)))
                 .thenAccept(
                         material -> {
                             brushRenderable =
-                                    ShapeFactory.makeSphere(0.125f, new Vector3(0.0f, 0.15f, 0.0f), material);
+                                    ShapeFactory.makeSphere(brushSize, new Vector3(0.0f, 0.1f, 0.0f), material);
                         });
+    }
+
+    public void clickButton(View view) {
+        Drawable background = view.getBackground();
+
+        if (background instanceof ColorDrawable)
+            mCurrentColor = ((ColorDrawable) background).getColor();
+
+        Log.d(TAG, String.format("COLOR PRESSED: %d", color));
+        CreateBrushRenderable(GetNewBrushSize());
     }
 }
