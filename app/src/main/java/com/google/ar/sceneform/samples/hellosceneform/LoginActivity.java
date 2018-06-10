@@ -1,11 +1,16 @@
 package com.google.ar.sceneform.samples.hellosceneform;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.media.Image;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 
 
 import okhttp3.MediaType;
@@ -20,52 +25,33 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login_screen);
 
-        EditText userId = findViewById(R.id.user_id);
-        EditText gang = findViewById(R.id.gang);
-        Button login = findViewById(R.id.log_in);
-
-        login.setOnClickListener(v -> {
-            String userIdText = userId.getText().toString();
-            String gangName = gang.getText().toString();
-            if(userIdText == "" || gangName == "") {
-                return;
-            }
-
-            Thread thread = new Thread(new Runnable() {
-
-                @Override
-                public void run() {
-                    try  {
-                        OkHttpClient client = new OkHttpClient();
+        ImageButton redGangButton = findViewById(R.id.redSide);
+        ImageButton greenGangButton = findViewById(R.id.greenSide);
 
 
-                        MediaType mediaType = MediaType.parse("application/json");
-                        RequestBody body = RequestBody.create(mediaType, String.format("{\n\t\"userid\":\t\"%s\",\n\t\"gang\":\t\"%s\"\n}", userIdText, gangName));
-                        Log.d("login", "onCreate: " + body.toString());
-                        Request request = new Request.Builder()
-                                .url("http://176.9.2.82:6778/auth")
-                                .post(body)
-                                .addHeader("content-type", "application/json")
-                                .addHeader("authorization", "Bearer 123")
-                                .build();
+        redGangButton.setOnClickListener(v -> processTeamChoose(false));
+        greenGangButton.setOnClickListener(v -> processTeamChoose(true));
+    }
 
-                        Response response = client.newCall(request).execute();
-                        if(response.isSuccessful()) {
-                            //Toast.makeText(this,"succesfull!", Toast.LENGTH_LONG).show();
-                            Log.d("login", "run: sucess");
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
+    private void processTeamChoose(boolean greenSide) {
 
-            thread.start();
+        SharedPreferences sharedPref = getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
 
-        });
+        int userId = 1;
+        String userToken = "1";
 
 
+        if (greenSide) {
+            userId = 1;
+            userToken = "1";
+        } else {
+            userId = 2;
+            userToken = "2";
+        }
 
-
+        editor.putInt("user", userId);
+        editor.putString("userToken", userToken);
+        editor.apply();
     }
 }
