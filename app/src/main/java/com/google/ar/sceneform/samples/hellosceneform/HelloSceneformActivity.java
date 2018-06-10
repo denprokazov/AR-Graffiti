@@ -27,8 +27,10 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.MainThread;
+import android.support.annotation.RequiresApi;
 import android.support.annotation.WorkerThread;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -194,6 +196,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
         });
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void CreateBrushRenderable() {
         MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.toArgb(mCurrentColor)))
                 .thenAccept(
@@ -210,15 +213,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
             Toast.makeText(view.getContext(), "LOCATION IS NOT PERMITTED", Toast.LENGTH_LONG).show();
             return;
         }
-
-        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-
-        double latitude = location.getLatitude();
-        double longtitude = location.getLongitude();
-
-        String toast = String.format("Lat, Lang: %9.7f %9.7f", latitude, longtitude);
-
-        Collection<Plane> planes = arFragment.getArSceneView().getSession().getAllTrackables(Plane.class);
 
         Collection<Point> points = PlaneAnchorsToPointsMapper.Map(arFragment.getArSceneView().getSession().getAllAnchors());
         Bitmap bitmap = ImageExporter.Export(points);
@@ -294,8 +288,14 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
                 MediaType mediaType = MediaType.parse("application/json");
 
-                String a = String.format("{\n\t\"image\": \"%s\",\n\t\"id\": \"%s\",\n\t\"userid\": \"%s\",\n\t\"longitude\": %s,\n\t\"latitude\": %s,\n\t\"height\": 0,\n\t\"message\": \"sobaka\",\n\t\"gang\": \"kek\"\n}",
-                        imageUrl.toString(), UUID.randomUUID().toString(),Integer.toString(userId), Double.toString(location.getLongitude()),  Double.toString(location.getLatitude()));
+                String gangName = "Russia";
+                if(userId != 1) {
+                    gangName = "Saudi Arabia";
+                }
+
+                String a = String.format("{\n\t\"image\": \"%s\",\n\t\"id\": \"%s\",\n\t\"userid\": \"%s\",\n\t\"longitude\": %s,\n\t\"latitude\": %s,\n\t\"height\": 0,\n\t\"message\": \"sobaka\",\n\t\"gang\": \"%s\"\n}",
+                        imageUrl.toString(), UUID.randomUUID().toString(),Integer.toString(userId), Double.toString(location.getLongitude()),  Double.toString(location.getLatitude()), gangName);
+
                 RequestBody body = RequestBody.create(mediaType, a);
                 Request request = new Request.Builder()
                         .url("http://176.9.2.82:6778/graffity")
@@ -371,20 +371,42 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     private void updateGraffitiFromServer(Graffiti graffiti) {
+        @SuppressLint("MissingPermission")
+        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+        double userLatitude = location.getLatitude();
+        double userLongtitude = location.getLongitude();
+
+        double distance = LocationHelper.distance(userLatitude, graffiti.getLatitude(), userLongtitude, graffiti.getLongitude(), 0.0, 0.0);
+        double bearing = LocationHelper.bearing(userLatitude, graffiti.getLatitude(), userLongtitude, graffiti.getLongitude());
+
+
+        if(distance > 20) {
+            return;
+        }
+
         ViewRenderable.builder()
                 .setView(this, R.layout.graffity)
                 .build()
                 .thenAccept(renderable -> {
                     ViewRenderable grafittiViewRenderable = renderable;
 
+                    if(arFragment.getArSceneView().getArFrame().getCamera().getTrackingState() != TrackingState.TRACKING) {
+                        return;
+                    }
+
                     final ImageView view = grafittiViewRenderable.getView().findViewById(R.id.graffity_in_ar);
 
                     Picasso.get().load(graffiti.getImage()).into(view);
 
+                    float xTranslation = (float) (Math.sin(bearing) * distance);
+                    float zTranslation = (float) (Math.cos(bearing) * distance);
+
                     Node graffitiArNode = new Node();
 
                     graffitiArNode.setRenderable(grafittiViewRenderable);
-                    graffitiArNode.setWorldPosition(new Vector3(4, 0, 0));
+
+                    graffitiArNode.setWorldPosition(new Vector3(xTranslation, 0, zTranslation));
                     graffitiArNode.setWorldRotation(new Quaternion());
                     graffitiArNode.setLocalRotation(new Quaternion());
                     graffitiArNode.setParent(arFragment.getArSceneView().getScene());
@@ -419,11 +441,9 @@ public class HelloSceneformActivity extends AppCompatActivity {
         @Override
         @MainThread
         protected void onPostExecute(GraffitiParentNode graffitiParentNode) {
-            updateGraffitiFromServer(graffitiParentNode.getMessage().get(0));
-            Toast.makeText(context, "TEST", Toast.LENGTH_LONG).show();
-//            for(Graffiti graffiti : graffitiParentNode.getMessage()) {
-//                updateGraffitiFromServer(graffiti);
-//            }
+            for(Graffiti graffiti : graffitiParentNode.getMessage()) {
+                updateGraffitiFromServer(graffiti);
+            }
         }
     }
 }
