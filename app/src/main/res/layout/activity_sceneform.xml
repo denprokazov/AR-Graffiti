@@ -74,7 +74,7 @@
         android:layout_height="36dp"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
-        android:onClick="clickButton"
+        android:onClick="clickRedButton"
         android:background="@drawable/redbutton" />
 
     <Button
@@ -82,7 +82,7 @@
         android:layout_height="36dp"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
-        android:onClick="clickButton"
+        android:onClick="clickGreenButton"
         android:background="@drawable/greenbutton" />
 
     <Button
@@ -90,7 +90,7 @@
         android:layout_height="36dp"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
-        android:onClick="clickButton"
+        android:onClick="clickBlueButton"
         android:background="@drawable/bluebutton" />
 
     <Button

@@ -5,5 +5,6 @@
 
     <ImageView
         android:layout_width="1000dp"
-        android:layout_height="1000dp" />
+        android:layout_height="1000dp"
+        android:background="@drawable/redbutton" />
 </FrameLayout>

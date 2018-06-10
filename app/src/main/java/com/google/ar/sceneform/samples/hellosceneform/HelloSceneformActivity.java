@@ -200,7 +200,8 @@ public class HelloSceneformActivity extends AppCompatActivity {
         Node graffiti = new Node();
 
         graffiti.setRenderable(grafittiViewRenderable);
-        graffiti.setWorldPosition(new Vector3(xTranslation, 0, zTranslation));
+//        graffiti.setWorldPosition(new Vector3(xTranslation, 0, zTranslation));
+        graffiti.setWorldPosition(new Vector3(4, 0, 0));
         graffiti.setWorldRotation(new Quaternion());
         graffiti.setLocalRotation(new Quaternion());
         graffiti.setParent(arFragment.getArSceneView().getScene());
@@ -305,19 +306,6 @@ public class HelloSceneformActivity extends AppCompatActivity {
                         });
     }
 
-    public void clickButton(View view) {
-        Drawable background = view.getBackground();
-
-        if (background instanceof GradientDrawable) {
-            GradientDrawable shapeDrawable = (GradientDrawable) background;
-            mCurrentColor = shapeDrawable.getColor().getDefaultColor();
-
-            Toast.makeText(this, String.format("COLOR CHANGED: %d", mCurrentColor), Toast.LENGTH_LONG).show();
-        }
-
-        CreateBrushRenderable();
-    }
-
     public void uploadImage(View view) {
         Log.d(TAG, arFragment.getArSceneView().getScene().getCamera().getWorldPosition().toString());
 
@@ -395,7 +383,8 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     public void placeOnGps(View view) {
-        LoadGraffitiesFromServer();
+//        LoadGraffitiesFromServer();
+        updateGraffitiesFromServer();
     }
 
     public void uploadGraffiti(String imageUrl) {
@@ -406,24 +395,12 @@ public class HelloSceneformActivity extends AppCompatActivity {
             @Override
             public void run() {
                 OkHttpClient client = new OkHttpClient();
-                double latitude = location.getLatitude();
-                double longtitude = location.getLongitude();
+
                 MediaType mediaType = MediaType.parse("application/json");
-                RequestBody body = RequestBody.create(mediaType, String.format(
-                        "{\"image\": \"%s\"," +
-                                "\"id\": \"%s\"," +
-                                "\"userid\": \"%s\"," +
-                                "\"longitude\": %s" +
-                                "\"latitude\": %s," +
-                                "\"height\": 0," +
-                                "\"message\": \"Test\"," +
-                                "\"gang\": \"%s\"}",
-                        imageUrl,
-                        UUID.randomUUID(),
-                        "123",
-                        longtitude,
-                        latitude,
-                        "gang")); //todo shared pref
+
+                String a = String.format("{\n\t\"image\": \"%s\",\n\t\"id\": \"%s\",\n\t\"userid\": \"123\",\n\t\"longitude\": %s,\n\t\"latitude\": %s,\n\t\"height\": 0,\n\t\"message\": \"sobaka\",\n\t\"gang\": \"kek\"\n}",
+                        imageUrl.toString(), UUID.randomUUID().toString(), Double.toString(location.getLongitude()), Double.toString(location.getLatitude()));
+                RequestBody body = RequestBody.create(mediaType, a);
                 Request request = new Request.Builder()
                         .url("http://176.9.2.82:6778/graffity")
                         .post(body)
@@ -431,9 +408,9 @@ public class HelloSceneformActivity extends AppCompatActivity {
                         .addHeader("authorization", "Bearer 123")
                         .build();
 
-                Response response = null;
                 try {
-                    response = client.newCall(request).execute();
+                    Response response = client.newCall(request).execute();
+                    Log.d(TAG, response.body().string());
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -443,7 +420,15 @@ public class HelloSceneformActivity extends AppCompatActivity {
         thread.start();
     }
 
-    public void updateGraffitiesFromServer(LatLng userPosition) {
+    @SuppressLint("MissingPermission")
+    public void updateGraffitiesFromServer() {
+        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+        double latitude = location.getLatitude();
+        double longtitude = location.getLongitude();
+
+        LatLng userPosition = new LatLng(latitude, longtitude);
+
         OkHttpClient client = new OkHttpClient();
 
                 MediaType mediaType = MediaType.parse("application/json");
@@ -467,5 +452,20 @@ public class HelloSceneformActivity extends AppCompatActivity {
                         Graffiti[] graffities = gson.fromJson(response.body().charStream(), Graffiti[].class);
                     }
                 });
+    }
+
+    public void clickRedButton(View view) {
+        mCurrentColor = android.graphics.Color.RED;
+        CreateBrushRenderable();
+    }
+
+    public void clickGreenButton(View view) {
+        mCurrentColor = android.graphics.Color.GREEN;
+        CreateBrushRenderable();
+    }
+
+    public void clickBlueButton(View view) {
+        mCurrentColor = android.graphics.Color.BLUE;
+        CreateBrushRenderable();
     }
 }
