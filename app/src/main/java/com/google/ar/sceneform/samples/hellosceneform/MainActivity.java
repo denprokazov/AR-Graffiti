@@ -14,6 +14,9 @@ import android.widget.ImageButton;
 
 import com.google.ar.sceneform.samples.hellosceneform.helpers.ArPermissionHelper;
 import com.google.ar.sceneform.samples.hellosceneform.models.Area;
+import com.google.ar.sceneform.samples.hellosceneform.models.AreaResponceMessage;
+import com.google.ar.sceneform.samples.hellosceneform.models.AreaResponse;
+import com.google.gson.Gson;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.Marker;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
@@ -25,10 +28,18 @@ import com.mapbox.mapboxsdk.maps.MapboxMap;
 import java.util.ArrayList;
 import java.util.List;
 
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
 
 public class MainActivity extends AppCompatActivity {
     private MapView mapView;
     private List<Area> areas = new ArrayList<Area>();
+
+    private String userId = "";
+    private final Gson gson = new Gson();
+
 
 
     private LocationManager locationManager;
@@ -39,10 +50,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.map_screen);
-
-
-        areas.add(new Area(new LatLng(53.8999964, 27.5666644), "gang1"));
-        areas.add(new Area(new LatLng(53.89, 27.57756), "gang2"));
         ArPermissionHelper.requestPermission(this);
 
         
@@ -57,18 +64,12 @@ public class MainActivity extends AppCompatActivity {
 
         mapView.getMapAsync(mapboxMap -> {
 
-            for (Area area: areas) {
-                String color = "#E82020";
-                if(area.Gang == "gang2") {
-                    color = "#42f45f";
-                }
-                drawPolygon(mapboxMap, area, color);
-            }
             locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
 
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, setupLocationChangeListener(mapboxMap));
 
+            getZones(mapboxMap);
 
         });
 
@@ -77,29 +78,39 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-//        Thread thread = new Thread(new Runnable() {
-//
-//            @Override
-//            public void run() {
-//                try  {
-//                    OkHttpClient client = new OkHttpClient();
-//
-//                    Request request = new Request.Builder()
-//                            .url("http://176.9.2.82:6778/map/zones/")
-//                            .get()
-//                            .build();
-//
-//                    Response response = client.newCall(request).execute();
-//
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        });
-//
-//        thread.start();
 
 
+
+    }
+
+    private void getZones(MapboxMap mapboxMap) {
+        Thread thread = new Thread(() -> {
+            try  {
+                OkHttpClient client = new OkHttpClient();
+
+                Request request = new Request.Builder()
+                        .url("http://176.9.2.82:6778/map/zones")
+                        .get()
+                        .build();
+
+                Response response = client.newCall(request).execute();
+
+                AreaResponse areas = gson.fromJson(response.body().charStream(), AreaResponse.class);
+
+                for (AreaResponceMessage area: areas.getMessages()) {
+                    String color = "#E82020";
+                    if(area.getGang().equals("Russia")) {
+                        color = "#42f45f";
+                    }
+                    drawPolygon(mapboxMap, area.getLatitude(), area.getLongitude(), color);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        thread.start();
     }
 
     @NonNull
@@ -138,15 +149,17 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
-    private void drawPolygon(MapboxMap mapboxMap, Area area, String color) {
+    private void drawPolygon(MapboxMap mapboxMap, double latitude, double longitude, String color) {
         List<LatLng> polygons = new ArrayList<>();
-        double delta = 0.003;
-        polygons.add(new LatLng(area.Latitude+delta, area.Longitude-delta));
-        polygons.add(new LatLng(area.Latitude+delta, area.Longitude+2*delta));
-        polygons.add(new LatLng(area.Latitude-2*delta, area.Longitude + 2*delta));
-        polygons.add(new LatLng(area.Latitude-2*delta, area.Longitude-2*delta));
-        polygons.add(new LatLng(area.Latitude+delta, area.Longitude-2*delta));
-        PolygonOptions polygonOptions = new PolygonOptions().fillColor(Color.parseColor(color)).alpha(0.5f)
+        double random = Math.random() / 100;
+
+        double delta = 0.003 + random;
+        polygons.add(new LatLng(latitude+delta, longitude-delta));
+        polygons.add(new LatLng(latitude+delta, longitude+2*delta));
+        polygons.add(new LatLng(latitude-2*delta, longitude+ 2*delta));
+        polygons.add(new LatLng(latitude-2*delta, longitude-2*delta));
+        polygons.add(new LatLng(latitude+delta, longitude-2*delta));
+        PolygonOptions polygonOptions = new PolygonOptions().fillColor(Color.parseColor(color)).alpha(0.05f)
                 .addAll(polygons);
         mapboxMap.addPolygon(polygonOptions);
     }
