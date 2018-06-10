@@ -13,7 +13,7 @@ public class PlaneAnchorsToPointsMapper {
         Collection<Point> points = new ArrayList<Point>();
 
         for(Anchor anchor : anchors) {
-            points.add(new Point(anchor.getPose().tx(), anchor.getPose().tz(), 0.25f, 0));
+            points.add(new Point(anchor.getPose().tx(), anchor.getPose().tz(), 0.2f, 0));
         }
 
         return points;

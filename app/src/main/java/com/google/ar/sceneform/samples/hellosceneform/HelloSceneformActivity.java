@@ -33,12 +33,15 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.cloudinary.android.MediaManager;
 import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
@@ -48,12 +51,18 @@ import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
+import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.HitTestResult;
+import com.google.ar.sceneform.Node;
+import com.google.ar.sceneform.Scene;
+import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.Color;
 import com.google.ar.sceneform.rendering.MaterialFactory;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.rendering.ShapeFactory;
+import com.google.ar.sceneform.rendering.ViewRenderable;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.ArPermissionHelper;
 import com.google.ar.sceneform.samples.hellosceneform.helpers.LocationHelper;
 import com.google.ar.sceneform.samples.hellosceneform.services.image_export.ImageExporter;
@@ -76,8 +85,12 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
     private LocationManager locationManager;
     private LocationListener locationListener;
+    private ViewRenderable grafittiViewRenderable;
 
     private int mCurrentColor;
+    
+    double graffitiLatitude = 53.8902966;
+    double graffitiLongtitude = 27.5689460;
 
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
@@ -87,18 +100,32 @@ public class HelloSceneformActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sceneform);
 
-        arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
+        SetupLocationListener();
 
-//        AddLocationButtonHandler();
-//        AddPushButtonHandler();
+        @SuppressLint("MissingPermission")
+        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+        arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
 
         CreateBrushRenderable();
         AddArFragmentListeners();
-        SetupLocationListener();
 
         AddSeekBarChangeListener();
 
         MediaManager.init(this);
+
+//        LoadGraffitiesFromServer();
+
+        ViewRenderable.builder()
+                .setView(this, R.layout.graffity)
+                .build()
+                .thenAccept(renderable -> {
+                    grafittiViewRenderable = renderable;
+                    ImageView view = (ImageView) grafittiViewRenderable.getView();
+
+                    Glide.with(view).load("http://goo.gl/gEgYUd").into(view);
+                });
+
     }
 
     public void AddSeekBarChangeListener() {
@@ -106,7 +133,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-
+                CreateBrushRenderable();
             }
 
             @Override
@@ -130,35 +157,37 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     private void LoadGraffitiesFromServer() {
-        double graffitiLatitude = 53.890586; //53.8902951;
-        double graffitiLongtitude = 27.565978; //27.5688288;
+        if(grafittiViewRenderable == null) {
+            return;
+        }
 
+        @SuppressLint("MissingPermission")
         Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
-        double userLatitude = location.getLatitude();
-        double userLongtitude = location.getLongitude();
+        double worldStartLatitude = location.getLatitude();
+        double worldStartLongtitude = location.getLongitude();
 
-        double distance = LocationHelper.distance(userLatitude, graffitiLatitude, userLongtitude, graffitiLongtitude, 0.0, 0.0);
-        double bearing = LocationHelper.bearing(userLatitude, graffitiLatitude, userLongtitude, graffitiLongtitude);
+        double distance = LocationHelper.distance(worldStartLatitude, graffitiLatitude, worldStartLongtitude, graffitiLongtitude, 0.0, 0.0);
+        double bearing = LocationHelper.bearing(worldStartLatitude, graffitiLatitude, worldStartLongtitude, graffitiLongtitude);
 
-        float zTranslation = (float) (Math.sin(bearing) * distance);
-        float xTranslation = (float) (Math.cos(bearing) * distance);
+        if(arFragment.getArSceneView().getArFrame().getCamera().getTrackingState() != TrackingState.TRACKING) {
+            return;
+        }
 
-        Toast.makeText(this, String.format("Distance, Bearing: %f %f. xTranslation, zTranslation: %f %f", distance, bearing, xTranslation, zTranslation), Toast.LENGTH_LONG).show();
+        Toast.makeText(this, String.format("Dist, bear: %f %f", distance, bearing), Toast.LENGTH_LONG).show();
 
-        Session session = arFragment.getArSceneView().getSession();
-        Pose pose = arFragment.getArSceneView().getArFrame().getCamera().getPose();
+        float xTranslation = (float) (Math.sin(bearing) * distance);
+        float zTranslation = (float) (Math.cos(bearing) * distance);
 
-        Pose graffitiPose = pose.extractTranslation()
-                .compose(Pose.makeTranslation(zTranslation, 0.5f, xTranslation))
-                .extractTranslation();
+        Node graffiti = new Node();
 
-        AnchorNode anchorNode = new AnchorNode(session.createAnchor(graffitiPose));
+        graffiti.setRenderable(grafittiViewRenderable);
+        graffiti.setWorldPosition(new Vector3(xTranslation, 0, zTranslation));
+        graffiti.setWorldRotation(new Quaternion());
+        graffiti.setLocalRotation(new Quaternion());
+        graffiti.setParent(arFragment.getArSceneView().getScene());
 
-        TransformableNode brush = new TransformableNode(arFragment.getTransformationSystem());
-        brush.setParent(anchorNode);
-        brush.setRenderable(brushRenderable);
-        brush.select();
+        graffiti.setOnTapListener((hitTestResult, motionEvent) -> Toast.makeText(this, "CLICK ON AR GRAFFITI", Toast.LENGTH_LONG));
     }
 
     private void SetupLocationListener() {
@@ -170,11 +199,12 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
         locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
-                double graffitiLatitude = 53.8902951; // 53.890586;
-                double graffitiLongtitude = 27.5688288; // 27.565978;
-
                 double latitude = location.getLatitude();
                 double longtitude = location.getLongitude();
+
+                String toast = String.format("Real Lat, Lang   : %9.7f %9.7f", latitude, longtitude);
+
+                Toast.makeText(activity, toast, Toast.LENGTH_LONG);
 
                 double distance = LocationHelper.distance(latitude, graffitiLatitude, longtitude, graffitiLongtitude, 0.0, 0.0);
                 double bearing = LocationHelper.bearing(latitude, graffitiLatitude, longtitude, graffitiLongtitude);
@@ -182,7 +212,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
                 float xTranslation = (float) (Math.sin(bearing) * distance);
                 float zTranslation = (float) (Math.cos(bearing) * distance);
 
-                String toast = String.format("Real Lat, Lang   : %9.7f %9.7f", latitude, longtitude);
+                toast = String.format("Real Lat, Lang   : %9.7f %9.7f", latitude, longtitude);
                 String toast2 = String.format("Goal Lat, Lang   : %9.7f %9.7f", graffitiLatitude, graffitiLongtitude);
                 String toast3 = String.format("Distance, Bearing: %9.7f %9.7f", distance, bearing);
                 String toast4 = String.format("XCoord,   ZCoord : %9.7f %9.7f", xTranslation, zTranslation);
@@ -210,7 +240,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
             return;
         }
 
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
     }
 
     private void AddArFragmentListeners() {
@@ -228,12 +258,15 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
                 Anchor anchor = hitResult.createAnchor();
                 AnchorNode anchorNode = new AnchorNode(anchor);
+                anchorNode.setWorldRotation(new Quaternion());
+                anchorNode.setLocalRotation(new Quaternion());
                 anchorNode.setParent(arFragment.getArSceneView().getScene());
 
-                TransformableNode locationView = new TransformableNode(arFragment.getTransformationSystem());
+                Node locationView = new Node();
                 locationView.setParent(anchorNode);
+                locationView.setWorldRotation(new Quaternion());
+                locationView.setLocalRotation(new Quaternion());
                 locationView.setRenderable(brushRenderable);
-                locationView.select();
             }
 
             return true;
@@ -339,5 +372,10 @@ public class HelloSceneformActivity extends AppCompatActivity {
                     }
                 })
                 .dispatch();
+    }
+
+    @SuppressLint("MissingPermission")
+    public void placeOnGps(View view) {
+        LoadGraffitiesFromServer();
     }
 }
