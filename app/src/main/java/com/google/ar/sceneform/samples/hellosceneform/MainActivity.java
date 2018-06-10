@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
             locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
 
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, setupLocationChangeListener(mapboxMap));
+            //locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, setupLocationChangeListener(mapboxMap));
 
             getZones(mapboxMap);
 
@@ -73,12 +73,11 @@ public class MainActivity extends AppCompatActivity {
 
         arButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, HelloSceneformActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(intent);
+
+            finish();
         });
-
-
-
-
     }
 
     private void getZones(MapboxMap mapboxMap) {

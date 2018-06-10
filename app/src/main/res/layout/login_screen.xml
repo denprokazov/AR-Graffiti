@@ -28,7 +28,7 @@
             android:layout_margin="10dp"
             android:layout_weight="1"
             android:background="@drawable/saudi"
-            android:scaleType="fitCenter"/>
+            android:scaleType="centerCrop" />
 
         <ImageButton
             android:id="@+id/greenSide"

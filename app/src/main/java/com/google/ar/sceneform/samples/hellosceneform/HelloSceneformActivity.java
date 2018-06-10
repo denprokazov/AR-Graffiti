@@ -19,6 +19,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -84,6 +85,8 @@ import java.io.ByteArrayOutputStream;
 import java.util.Collection;
 import java.util.Map;
 
+import static com.google.ar.sceneform.samples.hellosceneform.LoginActivity.USER_PREFS;
+
 public class HelloSceneformActivity extends AppCompatActivity {
     private static final String TAG = HelloSceneformActivity.class.getSimpleName();
 
@@ -93,6 +96,7 @@ public class HelloSceneformActivity extends AppCompatActivity {
     private LocationManager locationManager;
 
     private int mCurrentColor;
+    private int userId;
 
     private final Gson gson = new Gson();
 
@@ -107,6 +111,9 @@ public class HelloSceneformActivity extends AppCompatActivity {
         setContentView(R.layout.activity_sceneform);
 
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
+
+        SharedPreferences sharedPreferences = getSharedPreferences(USER_PREFS, MODE_PRIVATE);
+        userId = sharedPreferences.getInt("user", 0);
 
         SetupLocationListener();
         CreateBrushRenderable();
@@ -287,8 +294,8 @@ public class HelloSceneformActivity extends AppCompatActivity {
 
                 MediaType mediaType = MediaType.parse("application/json");
 
-                String a = String.format("{\n\t\"image\": \"%s\",\n\t\"id\": \"%s\",\n\t\"userid\": \"123\",\n\t\"longitude\": %s,\n\t\"latitude\": %s,\n\t\"height\": 0,\n\t\"message\": \"sobaka\",\n\t\"gang\": \"kek\"\n}",
-                        imageUrl.toString(), UUID.randomUUID().toString(), Double.toString(location.getLongitude()), Double.toString(location.getLatitude()));
+                String a = String.format("{\n\t\"image\": \"%s\",\n\t\"id\": \"%s\",\n\t\"userid\": \"%s\",\n\t\"longitude\": %s,\n\t\"latitude\": %s,\n\t\"height\": 0,\n\t\"message\": \"sobaka\",\n\t\"gang\": \"kek\"\n}",
+                        imageUrl.toString(), UUID.randomUUID().toString(),Integer.toString(userId), Double.toString(location.getLongitude()),  Double.toString(location.getLatitude()));
                 RequestBody body = RequestBody.create(mediaType, a);
                 Request request = new Request.Builder()
                         .url("http://176.9.2.82:6778/graffity")
